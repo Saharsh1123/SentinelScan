@@ -1,10 +1,10 @@
 from pathlib import Path
 
-def list_python_files(path):
-    return list(Path(path).rglob("*.py"))
+def list_python_files(inputted_path):
+    return list(Path(inputted_path).rglob("*.py"))
 
-def scan(path):
-    files = list_python_files(path)
+def scan(inputted_path):
+    files = list_python_files(inputted_path)
     number_of_files = len(files)
     print(f"Scanning {number_of_files} Python files...")
     print("--Results--")

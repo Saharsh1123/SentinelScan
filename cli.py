@@ -7,7 +7,5 @@ parser.add_argument("path")
 
 args = parser.parse_args()
 
-path = args.path
+inputted_path = args.path
 
-list_python_files(path)
-scan(path)
