@@ -1,0 +1,6 @@
+# SentinelScan
+
+A simple Python CLI tool that scans Python files recursively and outputs their contents line by line.
+
+## Usage
+python3 cli.py ./your_directory
