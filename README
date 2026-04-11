@@ -1,6 +1,85 @@
 # SentinelScan
 
-A simple Python CLI tool that scans Python files recursively and outputs their contents line by line.
+SentinelScan is a lightweight Python CLI tool that performs static analysis on Python codebases to detect hardcoded secrets using regex-based pattern matching.
+
+## Features
+
+- Recursively scans directories for `.py` files  
+- Detects common hardcoded secrets:
+  - API keys  
+  - Passwords  
+  - Tokens  
+  - AWS access keys  
+- Assigns severity levels (e.g., HIGH, MEDIUM)  
+- Outputs structured findings with file paths and line numbers  
+- Handles encoding issues gracefully to prevent scan interruptions  
+
+## Example Output
+
+```
+Scanning 3 Python files...
+
+--- Findings ---
+
+[HIGH] test_repo/open_vulns.py:1 API Key detected → api_key = "123"
+[HIGH] test_repo/open_vulns.py:2 Password detected → password="abc"
+[MEDIUM] test_repo/open_vulns.py:3 Token detected → token = "xyz"
+
+Total findings: 3
+```
+
+## Installation
+
+Clone the repository:
+
+```bash
+git clone https://github.com/your-username/SentinelScan.git
+cd SentinelScan
+```
+
+(Optional) Create and activate a virtual environment:
+
+```bash
+python3 -m venv venv
+source venv/bin/activate  # macOS/Linux
+```
 
 ## Usage
-python3 cli.py ./your_directory
+
+Run the scanner on a target directory:
+
+```bash
+python3 main.py ./your_directory
+```
+
+## Project Structure
+
+```
+SentinelScan/
+│── main.py              # Entry point
+│── cli.py               # CLI argument parsing
+│── scanner.py           # File traversal and scanning logic
+│── detectors/
+│   └── find_secrets.py  # Regex-based detection rules
+```
+
+## Limitations
+
+- Detection is regex-based and may produce false positives  
+- Does not perform deep or context-aware analysis  
+- Currently supports only Python files (`.py`)  
+
+## Future Improvements
+
+- Expand detection rules and coverage  
+- Reduce false positives with smarter pattern matching  
+- Add configuration support for custom rules  
+- Improve output formatting and reporting  
+
+## License
+
+This project is for educational purposes.
+
+
+
+
