@@ -1,5 +1,5 @@
 from pathlib import Path
-
+from detectors.find_secrets import detect_secrets
 
 def check_path(input_path):
     path = Path(input_path)
@@ -11,8 +11,7 @@ def check_path(input_path):
 
 # Recursively search the given path and return all .py files
 def list_python_files(path):
-    py_file_list = list(path.rglob("*.py"))
-    return py_file_list
+    return list(path.rglob("*.py"))
 
 
 def scan(files):
@@ -21,13 +20,19 @@ def scan(files):
         return
     number_of_files = len(files)
     print(f"Scanning {number_of_files} Python files...")
-    print("\n--- Findings ---")
+
+    findings = 0
+    files = sorted(files)
 
     for file in files:
-        line_count = 1
+        found = False
         with open(file, "r", encoding="utf-8", errors="ignore") as f:
-            print(f"\nFile: {file}")
-            for line in f:
-                print(f"Line {line_count}: {line}", end="")
-                line_count += 1
-        print()
+            for line_number, line in enumerate(f, start=1):
+                vulnerability = detect_secrets(line)
+                if vulnerability is not None:
+                    if not found:
+                        print("\n--- Findings ---\n")
+                    print(f"[{vulnerability[1]}] {file}:{line_number} {vulnerability[0]} detected → {line}")
+                    findings += 1
+                    found = True
+    print(f"\nTotal findings = {findings}")
