@@ -1,7 +1,9 @@
 import re
 
-# Mapping of detection rules to their regex patterns and severity levels.
-# Each rule represents a type of hardcoded secret to detect.
+# Detection rules for identifying hardcoded secrets in source code.
+# Each rule includes:
+# - pattern: Regex used to identify the secret
+# - severity: Risk level associated with the finding
 REGEX_INFO = {
     "AWS Access Key": {
         "pattern": r"AKIA[0-9A-Z]{16}",
@@ -28,25 +30,30 @@ REGEX_INFO = {
 
 def detect_secrets(line):
     """
-    Scan a single line of code for hardcoded secrets using predefined regex rules.
+    Analyze a single line of code for hardcoded secrets using predefined regex rules.
 
-    Iterates through all detection patterns and returns the first match found.
+    Iterates through all detection patterns and collects all matches found in the line.
 
     Args:
-        line (str): A single line of code to analyze.
+        line (str): A single line of source code.
 
     Returns:
-        tuple[str, str] | None:
-            - (rule_name, severity) if a secret is detected
-            - None if no match is found
+        list[tuple[str, str, str]] | None:
+            A list of findings where each finding is a tuple:
+            (rule_name, severity, matched_value).
+            Returns None if no matches are found.
     """
+    vulnerabilities = []
+
     for pattern_name, data in REGEX_INFO.items():
-        # Check if the current regex pattern matches the line
-        if re.search(data["pattern"], line):
-            return pattern_name, data["severity"]
+        # Find all occurrences of the pattern in the line
+        matches = list(re.finditer(data["pattern"], line))
 
-    return None  # Explicitly return None when no patterns match
-        
+        if matches:
+            for match in matches:
+                # Store rule name, severity, and matched content
+                vulnerabilities.append(
+                    (pattern_name, data["severity"], match.group())
+                )
 
-
-
+    return vulnerabilities or None
