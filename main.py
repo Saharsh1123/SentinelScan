@@ -1,27 +1,36 @@
 """
-Entry point for SentinelScan.
+SentinelScan CLI entry point.
 
-Handles CLI input, validates the target path, collects Python files,
-and initiates the scanning process. Gracefully handles invalid paths.
+This module orchestrates the execution flow of the application:
+- Parses user-provided input from the CLI
+- Validates the target directory
+- Discovers Python files recursively
+- Executes the scanning engine
+- Outputs formatted results to the console
+
+Errors related to invalid input paths are handled gracefully.
 """
 
 from cli import input_path
-from scanner import check_path, scan, list_python_files
+from scanner import check_path, scan, list_python_files, output
 
 
 if __name__ == "__main__":
     try:
-        # Validate the provided path and convert it to a Path object
+        # Validate input path and ensure it is a valid directory
         path = check_path(input_path)
 
-        # Recursively collect all Python files from the directory
+        # Discover all Python files within the target directory
         files = list_python_files(path)
 
-        # Execute the scanning process on collected files
-        scan(files)
+        # Run the scanning engine and collect findings
+        results = scan(files)
+
+        # Output results to the CLI
+        output(results)
 
     except FileNotFoundError as e:
-        # Handle invalid directory input and display a user-friendly error
+        # Display a user-friendly error message for invalid paths
         print(f"[ERROR] {e}")
 
 

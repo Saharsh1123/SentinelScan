@@ -10,7 +10,7 @@ def check_path(input_path):
         input_path (str | Path): Path to validate.
 
     Returns:
-        Path: Resolved Path object pointing to a valid directory.
+        Path: A Path object pointing to a valid directory.
 
     Raises:
         FileNotFoundError: If the path does not exist or is not a directory.
@@ -27,58 +27,87 @@ def check_path(input_path):
 
 def list_python_files(path):
     """
-    Recursively collect all Python (.py) files within a directory.
+    Recursively discover all Python (.py) files within a directory.
 
     Args:
         path (Path): Root directory to search.
 
     Returns:
-        list[Path]: List of discovered Python file paths.
+        list[Path]: List of Python file paths found in the directory tree.
     """
     return list(path.rglob("*.py"))
 
 
 def scan(files):
     """
-    Scan Python files for hardcoded secrets using detection rules.
+    Scan a collection of Python files for hardcoded secrets.
 
-    Iterates through each file line-by-line, applies detection logic,
-    and prints findings in a structured CLI format.
+    Each file is read line-by-line and analyzed using the detection engine.
+    All detected findings are collected and returned for further processing.
 
     Args:
         files (list[Path]): List of Python files to scan.
 
     Returns:
-        None
+        list[tuple[int, Path, str, str, str]]:
+            A list of findings where each finding is a tuple:
+                (line_number, file_path, rule_name, severity, matched_value)
+
+        Returns an empty list if no findings are detected or if no files are provided.
+
+    Behavior:
+        - Processes files in sorted order for consistent output
+        - Ignores encoding errors to prevent scan interruptions
+        - Supports multiple detections per line
     """
     if not files:
         print("No Python files found.")
-        return
+        return []
 
     print(f"Scanning {len(files)} Python files...")
 
-    total_findings = 0
     files = sorted(files)  # Ensure deterministic output order
-    has_findings = False   # Tracks whether any findings were detected
+    findings = []
 
     for file in files:
-        # Open file with UTF-8 encoding; ignore decode errors to prevent crashes
+        # Open file safely with UTF-8 encoding; ignore decode errors
         with open(file, "r", encoding="utf-8", errors="ignore") as f:
             for line_number, line in enumerate(f, start=1):
                 vulnerabilities = detect_secrets(line)
 
                 if vulnerabilities:
-                    # Print header only once when first finding is detected
-                    if not has_findings:
-                        print("\n--- Findings ---\n")
-                        has_findings = True
-
                     for rule_name, severity, match in vulnerabilities:
-                        print(
-                            f"[{severity}] "
-                            f"{file}:{line_number} "
-                            f"{rule_name} detected → {match}"
+                        findings.append(
+                            (line_number, file, rule_name, severity, match)
                         )
-                        total_findings += 1
 
-    print(f"\nTotal findings: {total_findings}")
+    return findings
+
+
+def output(results):
+    """
+    Display scan results in a structured CLI format.
+
+    Prints all detected findings with severity, file location, and extracted value.
+    Also outputs a summary count of total findings.
+
+    Args:
+        results (list[tuple[int, Path, str, str, str]]):
+            List of findings returned by the scan() function.
+
+    Returns:
+        None
+    """
+    if not results:
+        print("\nNo vulnerabilities found.")
+    else:
+        print("\n--- Findings ---\n")
+
+        for line_number, file, rule_name, severity, match in results:
+            print(
+                f"[{severity}] "
+                f"{file}:{line_number} "
+                f"{rule_name} → {match}"
+            )
+
+    print(f"\nTotal findings: {len(results)}")
