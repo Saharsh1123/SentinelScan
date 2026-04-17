@@ -6,23 +6,23 @@ import re
 # - severity: Risk level associated with the finding
 REGEX_INFO = {
     "AWS Access Key": {
-        "pattern": r"AKIA[0-9A-Z]{16}",
+        "pattern": re.compile(r"(AKIA[0-9A-Z]{16})"),
         "severity": "HIGH"
     },
     "Password": {
-        "pattern": r"password\s*=\s*['\"]([^'\"]+)['\"]",
+        "pattern": re.compile(r"password\s*=\s*['\"]([^'\"]{6,})['\"]", re.IGNORECASE),
         "severity": "HIGH"
     },
     "API Key": {
-        "pattern": r"api_key\s*=\s*['\"]([^'\"]+)['\"]",
+        "pattern": re.compile(r"api_key\s*=\s*['\"]([^'\"]{6,})['\"]", re.IGNORECASE),
         "severity": "HIGH"
     },
     "Token": {
-        "pattern": r"token\s*=\s*['\"]([^'\"]+)['\"]",
+        "pattern": re.compile(r"token\s*=\s*['\"]([^'\"]{6,})['\"]", re.IGNORECASE),
         "severity": "MEDIUM"
     },
     "Secret": {
-        "pattern": r"secret\s*=\s*['\"]([^'\"]+)['\"]",
+        "pattern": re.compile(r"secret\s*=\s*['\"]([^'\"]{6,})['\"]", re.IGNORECASE),
         "severity": "MEDIUM"
     }
 }
@@ -43,17 +43,19 @@ def detect_secrets(line):
             (rule_name, severity, matched_value).
             Returns None if no matches are found.
     """
-    vulnerabilities = []
+    line = line.split("#")[0].strip()
+    if not line:
+        return None
+
+    findings = []
 
     for pattern_name, data in REGEX_INFO.items():
         # Find all occurrences of the pattern in the line
-        matches = list(re.finditer(data["pattern"], line))
 
-        if matches:
-            for match in matches:
-                # Store rule name, severity, and matched content
-                vulnerabilities.append(
-                    (pattern_name, data["severity"], match.group())
-                )
+        for match in data["pattern"].finditer(line):
+            # Store rule name, severity, and matched content
+            findings.append(
+                (pattern_name, data["severity"], match.group(1))
+            )
 
-    return vulnerabilities or None
+    return findings or None
