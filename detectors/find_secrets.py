@@ -1,9 +1,14 @@
 import re
 
-# Detection rules for identifying hardcoded secrets in source code.
-# Each rule includes:
-# - pattern: Regex used to identify the secret
-# - severity: Risk level associated with the finding
+# Precompiled regex rules for detecting hardcoded secrets in source code.
+# Each rule contains:
+# - pattern: compiled regex used to identify the secret
+# - severity: classification of the finding (e.g., HIGH, MEDIUM)
+#
+# Notes:
+# - Patterns use capture groups to extract only the secret value.
+# - Length constraints ({6,}) help reduce false positives.
+# - Case-insensitive matching is applied where appropriate.
 REGEX_INFO = {
     "AWS Access Key": {
         "pattern": re.compile(r"(AKIA[0-9A-Z]{16})"),
@@ -30,30 +35,42 @@ REGEX_INFO = {
 
 def detect_secrets(line):
     """
-    Analyze a single line of code for hardcoded secrets using predefined regex rules.
+    Scan a single line of source code for hardcoded secrets.
 
-    Iterates through all detection patterns and collects all matches found in the line.
+    This function applies all predefined regex detection rules to the given line
+    and returns any matches found. It ignores commented portions of the line and
+    skips empty or non-executable content.
 
     Args:
-        line (str): A single line of source code.
+        line (str): A raw line of source code.
 
     Returns:
         list[tuple[str, str, str]] | None:
-            A list of findings where each finding is a tuple:
-            (rule_name, severity, matched_value).
-            Returns None if no matches are found.
+            A list of findings, where each finding is a tuple:
+                (rule_name, severity, extracted_secret_value)
+
+            - rule_name (str): Type of secret detected (e.g., "API Key")
+            - severity (str): Risk level associated with the finding
+            - extracted_secret_value (str): The actual secret value captured
+
+            Returns None if no secrets are detected in the line.
+
+    Behavior:
+        - Strips inline comments using '#' delimiter
+        - Ignores empty or whitespace-only lines
+        - Supports multiple detections per line
+        - Uses precompiled regex for efficiency
     """
+    # Remove inline comments and trim whitespace
     line = line.split("#")[0].strip()
     if not line:
         return None
 
     findings = []
 
+    # Apply each detection rule to the line
     for pattern_name, data in REGEX_INFO.items():
-        # Find all occurrences of the pattern in the line
-
         for match in data["pattern"].finditer(line):
-            # Store rule name, severity, and matched content
             findings.append(
                 (pattern_name, data["severity"], match.group(1))
             )

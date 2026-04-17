@@ -2,6 +2,10 @@
 
 SentinelScan is a lightweight Python CLI tool that performs static analysis on Python codebases to detect hardcoded secrets using regex-based pattern matching.
 
+It is designed as a fast, simple security utility to identify potential credential leaks such as API keys, passwords, and tokens directly in source code.
+
+---
+
 ## Features
 
 - Recursively scans directories for `.py` files  
@@ -10,23 +14,35 @@ SentinelScan is a lightweight Python CLI tool that performs static analysis on P
   - Passwords  
   - Tokens  
   - AWS access keys  
-- Assigns severity levels (e.g., HIGH, MEDIUM)  
+  - Generic secrets  
+- Uses **precompiled regex patterns** for efficient scanning  
+- Supports **multiple detections per line**  
+- Extracts **actual secret values** (not full lines)  
+- Applies **length-based filtering** to reduce false positives  
+- Handles **case-insensitive matching** where appropriate  
+- Ignores **commented code and inline comments**  
+- Assigns severity levels (e.g., `HIGH`, `MEDIUM`)  
 - Outputs structured findings with file paths and line numbers  
-- Handles encoding issues gracefully to prevent scan interruptions  
+- Handles encoding issues gracefully (`utf-8`, ignore errors)  
+
+---
 
 ## Example Output
 
 ```
-Scanning 3 Python files...
+Scanning 4 Python files...
 
 --- Findings ---
 
-[HIGH] test_repo/open_vulns.py:1 API Key detected → api_key = "123"
-[HIGH] test_repo/open_vulns.py:2 Password detected → password="abc"
-[MEDIUM] test_repo/open_vulns.py:3 Token detected → token = "xyz"
+[HIGH] test_dirs/test_repo/open_vulns.py:4 AWS Access Key → AKIAEXAMPLE123456789
+[MEDIUM] test_dirs/test_repo/open_vulns.py:5 Token → xyzttttggfdddf
+[HIGH] test_dirs/test_repo/open_vulns.py:6 API Key → 12dwdqwdqwdqw3
+[MEDIUM] test_dirs/test_repo/open_vulns.py:7 Token → abc1234567890j
 
-Total findings: 3
+Total findings: 4
 ```
+
+---
 
 ## Installation
 
@@ -44,6 +60,8 @@ python3 -m venv venv
 source venv/bin/activate  # macOS/Linux
 ```
 
+---
+
 ## Usage
 
 Run the scanner on a target directory:
@@ -52,33 +70,64 @@ Run the scanner on a target directory:
 python3 main.py ./your_directory
 ```
 
+---
+
+## How It Works
+
+1. Validates the input directory  
+2. Recursively collects all Python files (`.py`)  
+3. Reads files line-by-line (safe encoding handling)  
+4. Strips comments and ignores empty lines  
+5. Applies regex-based detection rules  
+6. Extracts and reports detected secrets with severity levels  
+
+---
+
+## Detection Logic
+
+- Regex rules are **precompiled** using `re.compile()` for performance  
+- Capture groups are used to extract only the **secret value**  
+- Minimum length constraints (e.g., `{6,}`) reduce trivial matches  
+- Multiple matches per line are supported using `re.finditer()`  
+
+---
+
 ## Project Structure
 
 ```
 SentinelScan/
-│── main.py              # Entry point
+│── main.py              # Entry point and execution flow
 │── cli.py               # CLI argument parsing
 │── scanner.py           # File traversal and scanning logic
 │── detectors/
-│   └── find_secrets.py  # Regex-based detection rules
+│   └── find_secrets.py  # Regex rules and detection engine
 ```
+
+---
 
 ## Limitations
 
-- Detection is regex-based and may produce false positives  
-- Does not perform deep or context-aware analysis  
+- Detection is **regex-based** and may still produce false positives  
+- Does not perform context-aware or semantic analysis  
+- Does not detect obfuscated or encoded secrets  
 - Currently supports only Python files (`.py`)  
+
+---
 
 ## Future Improvements
 
-- Expand detection rules and coverage  
-- Reduce false positives with smarter pattern matching  
-- Add configuration support for custom rules  
-- Improve output formatting and reporting  
+- Expand detection rules (JWTs, private keys, etc.)  
+- Further reduce false positives with smarter heuristics  
+- Add JSON / machine-readable output  
+- Add CLI flags (e.g., severity filtering, output formats)  
+- Support additional file types beyond Python  
+- Implement configuration for custom detection rules  
+
+---
 
 ## License
 
-This project is for educational purposes.
+This project is for educational and demonstration purposes.
 
 
 
