@@ -1,4 +1,5 @@
 import re
+import ast
 
 # Precompiled regex rules for detecting hardcoded secrets in source code.
 # Each rule contains:
@@ -76,3 +77,37 @@ def detect_secrets(line):
             )
 
     return findings or None
+
+
+def detect_ast_secrets(file):
+    findings = []
+
+    try:
+        tree = ast.parse(file)
+    except SyntaxError:
+        return []
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign):
+
+            var = node.targets[0]
+            val = node.value
+             
+            if (
+                isinstance(var, ast.Name)
+                and isinstance(val, ast.Constant)
+                and isinstance(val.value, str)
+            ):
+                line_number = node.lineno
+                original_name = var.id
+                var_name = original_name.lower()
+                
+                fake_line = f"{var_name} = \"{val.value}\""
+
+                vulnerabilities = detect_secrets(fake_line)
+
+                if vulnerabilities:
+                    for pattern_name, severity, value in vulnerabilities:
+                        findings.append((line_number, pattern_name, severity, value))
+
+    return findings

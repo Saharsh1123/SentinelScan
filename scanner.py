@@ -1,5 +1,5 @@
 from pathlib import Path
-from detectors.find_secrets import detect_secrets
+from detectors.find_secrets import detect_secrets, detect_ast_secrets
 
 
 def check_path(input_path):
@@ -70,16 +70,14 @@ def scan(files):
     findings = []
 
     for file in files:
+
         # Open file safely with UTF-8 encoding; ignore decode errors
         with open(file, "r", encoding="utf-8", errors="ignore") as f:
-            for line_number, line in enumerate(f, start=1):
-                vulnerabilities = detect_secrets(line)
+            content = f.read()
 
-                if vulnerabilities:
-                    for rule_name, severity, match in vulnerabilities:
-                        findings.append(
-                            (line_number, file, rule_name, severity, match)
-                        )
+            ast_results = detect_ast_secrets(content)
+            for line_number, var_name, severity, value in ast_results:
+                findings.append((line_number, file, var_name, severity, value))
 
     return findings
 
