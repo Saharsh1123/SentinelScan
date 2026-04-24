@@ -16,19 +16,19 @@ REGEX_INFO = {
         "severity": "HIGH"
     },
     "Password": {
-        "pattern": re.compile(r"password\s*=\s*['\"]([^'\"]{6,})['\"]", re.IGNORECASE),
+        "pattern": re.compile(r"password\s*=\s*['\"]([^'\"]{4,})['\"]", re.IGNORECASE),
         "severity": "HIGH"
     },
     "API Key": {
-        "pattern": re.compile(r"api_key\s*=\s*['\"]([^'\"]{6,})['\"]", re.IGNORECASE),
+        "pattern": re.compile(r"api_key\s*=\s*['\"]([^'\"]{4,})['\"]", re.IGNORECASE),
         "severity": "HIGH"
     },
     "Token": {
-        "pattern": re.compile(r"token\s*=\s*['\"]([^'\"]{6,})['\"]", re.IGNORECASE),
+        "pattern": re.compile(r"token\s*=\s*['\"]([^'\"]{4,})['\"]", re.IGNORECASE),
         "severity": "MEDIUM"
     },
     "Secret": {
-        "pattern": re.compile(r"secret\s*=\s*['\"]([^'\"]{6,})['\"]", re.IGNORECASE),
+        "pattern": re.compile(r"secret\s*=\s*['\"]([^'\"]{4,})['\"]", re.IGNORECASE),
         "severity": "MEDIUM"
     }
 }
@@ -62,9 +62,8 @@ def detect_secrets(line):
         - Supports multiple detections per line
         - Uses precompiled regex for efficiency
     """
-    # Remove inline comments and trim whitespace
-    line = line.split("#")[0].strip()
-    if not line:
+    line = line.strip()
+    if not line or line.startswith("#"):
         return None
 
     findings = []
