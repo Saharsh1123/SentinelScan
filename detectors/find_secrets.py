@@ -1,5 +1,6 @@
 import re
 import ast
+import textwrap
 
 # Precompiled regex rules for detecting hardcoded secrets in source code.
 # Each rule contains:
@@ -79,6 +80,7 @@ def detect_secrets(line):
 
 
 def detect_ast_secrets(file):
+    file = textwrap.dedent(file)
     findings = []
 
     try:
@@ -91,16 +93,21 @@ def detect_ast_secrets(file):
 
             var = node.targets[0]
             val = node.value
-             
+            line_number = node.lineno
+
             if (
-                isinstance(var, ast.Name)
-                and isinstance(val, ast.Constant)
+                isinstance(val, ast.Constant)
                 and isinstance(val.value, str)
             ):
-                line_number = node.lineno
-                original_name = var.id
-                var_name = original_name.lower()
-                
+                if isinstance(var, ast.Name):
+                    original_name = var.id
+                    var_name = original_name.lower()
+                elif isinstance(var, ast.Attribute):
+                    original_name = var.attr
+                    var_name = original_name.lower()
+                else:
+                    continue
+
                 fake_line = f"{var_name} = \"{val.value}\""
 
                 vulnerabilities = detect_secrets(fake_line)
