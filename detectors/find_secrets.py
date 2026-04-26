@@ -88,25 +88,23 @@ def detect_ast_secrets(file):
     except SyntaxError:
         return []
 
-    for node in ast.walk(tree):
+    for node in ast.walk(tree): 
         if isinstance(node, ast.Assign):
 
-            var = node.targets[0]
             val = node.value
             line_number = node.lineno
 
-            if (
-                isinstance(val, ast.Constant)
-                and isinstance(val.value, str)
-            ):
-                if isinstance(var, ast.Name):
-                    original_name = var.id
-                    var_name = original_name.lower()
-                elif isinstance(var, ast.Attribute):
-                    original_name = var.attr
-                    var_name = original_name.lower()
-                else:
+            for var in node.targets:
+                if not(
+                    isinstance(val, ast.Constant)
+                    and isinstance(val.value, str)
+                ):
                     continue
+
+                if isinstance(var, ast.Name):
+                    var_name = var.id.lower() 
+                elif isinstance(var, ast.Attribute):
+                    var_name = var.attr.lower()
 
                 fake_line = f"{var_name} = \"{val.value}\""
 

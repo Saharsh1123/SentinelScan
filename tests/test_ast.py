@@ -57,3 +57,17 @@ def test_ast_uppercase_variable():
     result = detect_ast_secrets(code)
 
     assert result == [(1, "Password", "HIGH", "abcdef")]
+
+def test_ast_multiple_targets():
+    code = 'a = password = "abcdef"'
+    result = detect_ast_secrets(code)
+
+    assert result == [
+        (1, "Password", "HIGH", "abcdef")
+    ]
+
+#def test_ast_nested_attribute():
+    #code = 'config.db.password = "abcdef"'
+    #result = detect_ast_secrets(code)
+
+    #assert result == [(1, "Password", "HIGH", "abcdef")]
