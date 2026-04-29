@@ -79,39 +79,72 @@ def detect_secrets(line):
     return findings or None
 
 
-def detect_ast_secrets(file):
+def parse_ast(file):
     file = textwrap.dedent(file)
-    findings = []
 
     try:
         tree = ast.parse(file)
     except SyntaxError:
-        return []
+        return None
+    
+    return tree
 
+def get_assignments(tree):
     for node in ast.walk(tree): 
         if isinstance(node, ast.Assign):
+            yield node
 
-            val = node.value
-            line_number = node.lineno
+def extract_node_value(node):
+    val = node.value
+    if not(
+        isinstance(val, ast.Constant)
+        and isinstance(val.value, str)
+    ):
+        return None
+    return val.value
 
-            for var in node.targets:
-                if not(
-                    isinstance(val, ast.Constant)
-                    and isinstance(val.value, str)
-                ):
-                    continue
+def extract_variable_path(node):
+    for var in node.targets:
+        full_path = []
+        temp_node = var
+        if isinstance(temp_node, ast.Attribute):
+            while isinstance(temp_node, ast.Attribute):
+                full_path.append(temp_node.attr.lower())
+                temp_node = temp_node.value
+            if not isinstance(temp_node, ast.Name):
+                continue
+            full_path.append(temp_node.id.lower())
+            full_path.reverse()
+        elif isinstance(var, ast.Name):
+            full_path.append(var.id.lower())
+        if len(full_path) != 0:
+            yield full_path
 
-                if isinstance(var, ast.Name):
-                    var_name = var.id.lower() 
-                elif isinstance(var, ast.Attribute):
-                    var_name = var.attr.lower()
+def detect_ast_secrets(code):
+    findings = []
+    tree = parse_ast(code)
+    if tree is None:
+        return []
 
-                fake_line = f"{var_name} = \"{val.value}\""
+    for node in get_assignments(tree):
+        val = extract_node_value(node)
+        if val is None:
+            continue
+        line_number = node.lineno
 
-                vulnerabilities = detect_secrets(fake_line)
+        for full_path in extract_variable_path(node):
+            var_name = full_path[-1]
 
-                if vulnerabilities:
-                    for pattern_name, severity, value in vulnerabilities:
-                        findings.append((line_number, pattern_name, severity, value))
+            fake_line = f"{var_name} = \"{val}\""
 
+            vulnerabilities = detect_secrets(fake_line)
+
+            if vulnerabilities:
+                for pattern_name, severity, value in vulnerabilities:
+                    findings.append((line_number, pattern_name, severity, value))
+        
     return findings
+
+
+
+    

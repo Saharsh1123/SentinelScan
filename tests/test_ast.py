@@ -66,8 +66,8 @@ def test_ast_multiple_targets():
         (1, "Password", "HIGH", "abcdef")
     ]
 
-#def test_ast_nested_attribute():
-    #code = 'config.db.password = "abcdef"'
-    #result = detect_ast_secrets(code)
+def test_ast_nested_attribute():
+    code = 'self.config.db.password = "abcdef"'
+    result = detect_ast_secrets(code)
 
-    #assert result == [(1, "Password", "HIGH", "abcdef")]
+    assert result == [(1, "Password", "HIGH", "abcdef")]
