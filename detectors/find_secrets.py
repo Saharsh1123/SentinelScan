@@ -179,7 +179,7 @@ def detect_ast_secrets(code):
             if vulnerabilities:
                 for pattern_name, severity, value in vulnerabilities:
                     findings.append((line_number, pattern_name, severity, value))
-        
+
     return findings
 
 

@@ -1,6 +1,6 @@
 from pathlib import Path
 from detectors.find_secrets import detect_ast_secrets
-
+import json
 
 def check_path(input_path):
     """
@@ -64,8 +64,6 @@ def scan(files):
         print("No Python files found.")
         return []
 
-    print(f"Scanning {len(files)} Python files...")
-
     files = sorted(files)  # Ensure deterministic output order
     findings = []
 
@@ -76,13 +74,32 @@ def scan(files):
             content = f.read()
 
             ast_results = detect_ast_secrets(content)
-            for line_number, var_name, severity, value in ast_results:
-                findings.append((line_number, file, var_name, severity, value))
+            for line_number, rule_name, severity, value in ast_results:
+                findings.append((line_number, file, rule_name, severity, value))
 
     return findings
 
+def filter_results(results, chosen_severity):
+    filtered_findings = []
+    for line_number, file, rule_name, severity, value in results:
+        if severity == chosen_severity or chosen_severity is None:
+            filtered_findings.append((line_number, file, rule_name, severity, value))
+    return filtered_findings
 
-def output(results):
+def output_json(filtered_findings):
+    json_results = []
+    for line_number, file, rule_name, severity, value in filtered_findings:
+        finding = {
+            "line": line_number,
+            "file": str(file),
+            "rule": rule_name,
+            "severity": severity,
+            "value": value,
+        }
+        json_results.append(finding)
+    print(json.dumps(json_results, indent=2))
+
+def output(filtered_findings, use_json, files):
     """
     Display scan results in a structured CLI format.
 
@@ -96,16 +113,22 @@ def output(results):
     Returns:
         None
     """
-    if not results:
+    if use_json:
+        output_json(filtered_findings)
+        return
+
+    print(f"Scanning {len(files)} Python files...")
+    
+    if not filtered_findings:
         print("\nNo vulnerabilities found.")
     else:
         print("\n--- Findings ---\n")
 
-        for line_number, file, rule_name, severity, match in results:
+        for line_number, file, rule_name, severity, value in filtered_findings:      
             print(
                 f"[{severity}] "
                 f"{file}:{line_number} "
-                f"{rule_name} → {match}"
+                f"{rule_name} → {value}"
             )
 
-    print(f"\nTotal findings: {len(results)}")
+        print(f"\nTotal findings: {len(filtered_findings)}")

@@ -11,8 +11,8 @@ This module orchestrates the execution flow of the application:
 Errors related to invalid input paths are handled gracefully.
 """
 
-from cli import input_path
-from scanner import check_path, scan, list_python_files, output
+from cli import input_path, chosen_severity, use_json
+from scanner import check_path, scan, list_python_files, output, filter_results
 
 
 if __name__ == "__main__":
@@ -26,8 +26,10 @@ if __name__ == "__main__":
         # Run the scanning engine and collect findings
         results = scan(files)
 
+        filtered_findings = filter_results(results, chosen_severity)
+
         # Output results to the CLI
-        output(results)
+        output(filtered_findings, use_json, files)
 
     except FileNotFoundError as e:
         # Display a user-friendly error message for invalid paths

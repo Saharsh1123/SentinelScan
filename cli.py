@@ -17,9 +17,17 @@ parser.add_argument(
     help="Path to the directory to scan"
 )
 
+parser.add_argument("--json", action="store_true")
+
+parser.add_argument("--severity", choices=["LOW", "MEDIUM", "HIGH"])
+
 # Parse command-line arguments
 args = parser.parse_args()
 
 # Extract the input path for use in the application
 input_path = args.path
+
+use_json = args.json
+
+chosen_severity = args.severity
 
