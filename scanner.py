@@ -1,5 +1,5 @@
 from pathlib import Path
-from detectors.find_secrets import detect_secrets, detect_ast_secrets
+from detectors.find_secrets import detect_ast_secrets
 
 
 def check_path(input_path):

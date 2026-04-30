@@ -2,81 +2,39 @@ import re
 import ast
 import textwrap
 
-# Precompiled regex rules for detecting hardcoded secrets in source code.
-# Each rule contains:
-# - pattern: compiled regex used to identify the secret
-# - severity: classification of the finding (e.g., HIGH, MEDIUM)
-#
-# Notes:
-# - Patterns use capture groups to extract only the secret value.
-# - Length constraints ({4,}) help reduce false positives.
-# - Case-insensitive matching is applied where appropriate.
 REGEX_INFO = {
     "AWS Access Key": {
-        "pattern": re.compile(r"(AKIA[0-9A-Z]{16})"),
+        "value_pattern": re.compile(r"(AKIA[0-9A-Z]{16})"),
         "severity": "HIGH"
     },
     "Password": {
-        "pattern": re.compile(r"password\s*=\s*['\"]([^'\"]{4,})['\"]", re.IGNORECASE),
+        "var_patterns": [
+            re.compile(r"password", re.IGNORECASE),
+            re.compile(r"pwd", re.IGNORECASE),
+            re.compile(r"passwd", re.IGNORECASE)         
+        ],
+        "min_length": 4,
         "severity": "HIGH"
     },
     "API Key": {
-        "pattern": re.compile(r"api_key\s*=\s*['\"]([^'\"]{4,})['\"]", re.IGNORECASE),
+        "var_patterns": [
+            re.compile(r"api_key", re.IGNORECASE),
+            re.compile(r"apikey", re.IGNORECASE)
+        ],
+        "min_length": 4,        
         "severity": "HIGH"
     },
     "Token": {
-        "pattern": re.compile(r"token\s*=\s*['\"]([^'\"]{4,})['\"]", re.IGNORECASE),
+        "var_patterns": [re.compile(r"token", re.IGNORECASE)],
+        "min_length": 4,
         "severity": "MEDIUM"
     },
     "Secret": {
-        "pattern": re.compile(r"secret\s*=\s*['\"]([^'\"]{4,})['\"]", re.IGNORECASE),
+        "var_patterns": [re.compile(r"secret", re.IGNORECASE),],
+        "min_length": 4,
         "severity": "MEDIUM"
     }
 }
-
-
-def detect_secrets(line):
-    """
-    Scan a single line of source code for hardcoded secrets.
-
-    This function applies all predefined regex detection rules to the given line
-    and returns any matches found. It ignores commented portions of the line and
-    skips empty or non-executable content.
-
-    Args:
-        line (str): A raw line of source code.
-
-    Returns:
-        list[tuple[str, str, str]] | None:
-            A list of findings, where each finding is a tuple:
-                (rule_name, severity, extracted_secret_value)
-
-            - rule_name (str): Type of secret detected (e.g., "API Key")
-            - severity (str): Risk level associated with the finding
-            - extracted_secret_value (str): The actual secret value captured
-
-            Returns None if no secrets are detected in the line.
-
-    Behavior:
-        - Strips inline comments using '#' delimiter
-        - Ignores empty or whitespace-only lines
-        - Supports multiple detections per line
-        - Uses precompiled regex for efficiency
-    """
-    line = line.strip()
-    if not line or line.startswith("#"):
-        return None
-
-    findings = []
-
-    # Apply each detection rule to the line
-    for pattern_name, data in REGEX_INFO.items():
-        for match in data["pattern"].finditer(line):
-            findings.append(
-                (pattern_name, data["severity"], match.group(1))
-            )
-
-    return findings or None
 
 
 def parse_ast(file):
@@ -170,6 +128,21 @@ def extract_variable_path(node):
         if len(full_path) != 0:
             yield full_path
 
+def detect_from_parts(var_name, val):
+    findings = []
+    for rule, data in REGEX_INFO.items():
+        if "value_pattern" in data:
+            if data["value_pattern"].fullmatch(val):
+                findings.append((rule, data["severity"], val))
+
+        if "var_patterns" in data:
+            for pattern in data["var_patterns"]:
+                match = pattern.search(var_name) 
+                if match and len(val) >= data["min_length"]:
+                    findings.append((rule, data["severity"], val))
+
+    return findings or None
+
 
 def detect_ast_secrets(code):
     """
@@ -201,10 +174,7 @@ def detect_ast_secrets(code):
         for full_path in extract_variable_path(node):
             var_name = full_path[-1]
 
-            # Normalize AST data into a regex-compatible assignment string
-            fake_line = f"{var_name} = \"{val}\""
-
-            vulnerabilities = detect_secrets(fake_line)
+            vulnerabilities = detect_from_parts(var_name, val)
 
             if vulnerabilities:
                 for pattern_name, severity, value in vulnerabilities:
