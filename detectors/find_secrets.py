@@ -2,6 +2,10 @@ import re
 import ast
 import textwrap
 
+# Rule definitions for secret detection.
+# Rules can match either:
+# - a secret-like value pattern, regardless of variable name
+# - a suspicious variable name combined with a minimum value length
 REGEX_INFO = {
     "AWS Access Key": {
         "value_pattern": re.compile(r"(AKIA[0-9A-Z]{16})"),
@@ -128,13 +132,31 @@ def extract_variable_path(node):
         if len(full_path) != 0:
             yield full_path
 
+
 def detect_from_parts(var_name, val):
+    """
+    Classify an extracted variable/value pair against secret detection rules.
+
+    Args:
+        var_name (str): Normalized variable name or final attribute name.
+        val (str): Extracted string literal value.
+
+    Returns:
+        list[tuple[str, str, str]] | None:
+            A list of findings where each finding is:
+                (rule_name, severity, extracted_value)
+
+            Returns None if no rule matches.
+    """
     findings = []
+
     for rule, data in REGEX_INFO.items():
+        # Match structured secret values, such as AWS access keys
         if "value_pattern" in data:
             if data["value_pattern"].fullmatch(val):
                 findings.append((rule, data["severity"], val))
 
+        # Match suspicious variable names and enforce minimum value length
         if "var_patterns" in data:
             for pattern in data["var_patterns"]:
                 match = pattern.search(var_name) 
@@ -148,8 +170,9 @@ def detect_ast_secrets(code):
     """
     Scan Python source code using AST analysis to detect hardcoded secrets.
 
-    This function identifies string assignments and evaluates them against
-    predefined detection rules by reconstructing a normalized assignment pattern.
+    This function extracts string assignments from the AST, resolves variable
+    or attribute names, and classifies each variable/value pair using the
+    configured detection rules.
 
     Args:
         code (str): Python source code.
@@ -181,6 +204,5 @@ def detect_ast_secrets(code):
                     findings.append((line_number, pattern_name, severity, value))
 
     return findings
-
 
     

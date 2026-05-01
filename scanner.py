@@ -42,8 +42,9 @@ def scan(files):
     """
     Scan a collection of Python files for hardcoded secrets.
 
-    Each file is read line-by-line and analyzed using the detection engine.
-    All detected findings are collected and returned for further processing.
+    Each file is read into memory and analyzed using the AST-based detection
+    engine. All detected findings are collected and returned for filtering
+    and output formatting.
 
     Args:
         files (list[Path]): List of Python files to scan.
@@ -58,7 +59,7 @@ def scan(files):
     Behavior:
         - Processes files in sorted order for consistent output
         - Ignores encoding errors to prevent scan interruptions
-        - Supports multiple detections per line
+        - Supports multiple detections per file
     """
     if not files:
         print("No Python files found.")
@@ -69,7 +70,7 @@ def scan(files):
 
     for file in files:
 
-        # Open file safely with UTF-8 encoding; ignore decode errors
+        # Read file content safely before passing it to the AST detector
         with open(file, "r", encoding="utf-8", errors="ignore") as f:
             content = f.read()
 
@@ -79,14 +80,41 @@ def scan(files):
 
     return findings
 
+
 def filter_results(results, chosen_severity):
+    """
+    Filter scan findings by severity.
+
+    If no severity is provided, all findings are returned unchanged.
+
+    Args:
+        results (list[tuple[int, Path, str, str, str]]):
+            Findings returned by scan().
+        chosen_severity (str | None):
+            Severity level to filter by, or None to keep all findings.
+
+    Returns:
+        list[tuple[int, Path, str, str, str]]:
+            Filtered findings matching the selected severity.
+    """
     filtered_findings = []
     for line_number, file, rule_name, severity, value in results:
         if severity == chosen_severity or chosen_severity is None:
             filtered_findings.append((line_number, file, rule_name, severity, value))
     return filtered_findings
 
+
 def output_json(filtered_findings):
+    """
+    Output findings in machine-readable JSON format.
+
+    Args:
+        filtered_findings (list[tuple[int, Path, str, str, str]]):
+            Findings to serialize as JSON.
+
+    Returns:
+        None
+    """
     json_results = []
     for line_number, file, rule_name, severity, value in filtered_findings:
         finding = {
@@ -99,16 +127,20 @@ def output_json(filtered_findings):
         json_results.append(finding)
     print(json.dumps(json_results, indent=2))
 
+
 def output(filtered_findings, use_json, files):
     """
-    Display scan results in a structured CLI format.
+    Display scan results in either JSON or human-readable CLI format.
 
-    Prints all detected findings with severity, file location, and extracted value.
-    Also outputs a summary count of total findings.
+    JSON mode prints only valid JSON so the output can be consumed by other
+    tools. Human-readable mode prints findings with severity, file location,
+    extracted value, and a summary count.
 
     Args:
-        results (list[tuple[int, Path, str, str, str]]):
-            List of findings returned by the scan() function.
+        filtered_findings (list[tuple[int, Path, str, str, str]]):
+            Findings after optional severity filtering.
+        use_json (bool): Whether to output results as JSON.
+        files (list[Path]): List of scanned Python files.
 
     Returns:
         None

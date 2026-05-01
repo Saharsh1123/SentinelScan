@@ -6,7 +6,8 @@ This module orchestrates the execution flow of the application:
 - Validates the target directory
 - Discovers Python files recursively
 - Executes the scanning engine
-- Outputs formatted results to the console
+- Applies optional severity filtering
+- Outputs results as human-readable text or JSON
 
 Errors related to invalid input paths are handled gracefully.
 """
@@ -23,12 +24,13 @@ if __name__ == "__main__":
         # Discover all Python files within the target directory
         files = list_python_files(path)
 
-        # Run the scanning engine and collect findings
+        # Run the scanning engine and collect all findings
         results = scan(files)
 
+        # Apply optional severity filtering before output formatting
         filtered_findings = filter_results(results, chosen_severity)
 
-        # Output results to the CLI
+        # Output results in the selected format
         output(filtered_findings, use_json, files)
 
     except FileNotFoundError as e:

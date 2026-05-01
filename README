@@ -1,45 +1,123 @@
 # SentinelScan
 
-SentinelScan is a lightweight Python CLI tool that performs static analysis on Python codebases to detect hardcoded secrets using regex-based pattern matching.
+SentinelScan is a Python CLI static-analysis tool that scans Python codebases for hardcoded secrets.
 
-It is designed as a fast, simple security utility to identify potential credential leaks such as API keys, passwords, and tokens directly in source code.
+It uses AST-based parsing to inspect real Python assignments, then applies rule-based secret detection to identify potential credential leaks such as passwords, API keys, tokens, AWS access keys, and generic secrets.
+
+The project is designed as a lightweight security utility and learning-focused static-analysis engine.
 
 ---
 
 ## Features
 
-- Recursively scans directories for `.py` files  
-- Detects common hardcoded secrets:
-  - API keys  
-  - Passwords  
-  - Tokens  
-  - AWS access keys  
-  - Generic secrets  
-- Uses **precompiled regex patterns** for efficient scanning  
-- Supports **multiple detections per line**  
-- Extracts **actual secret values** (not full lines)  
-- Applies **length-based filtering** to reduce false positives  
-- Handles **case-insensitive matching** where appropriate  
-- Ignores **commented code and inline comments**  
-- Assigns severity levels (e.g., `HIGH`, `MEDIUM`)  
-- Outputs structured findings with file paths and line numbers  
-- Handles encoding issues gracefully (`utf-8`, ignore errors)  
+- Recursively scans directories for Python files (`.py`)
+- Uses Python AST parsing to analyze real assignment statements
+- Detects hardcoded secrets assigned to:
+  - Simple variables
+  - Object attributes
+  - Nested attributes
+  - Multiple assignment targets
+- Detects common secret types:
+  - Passwords
+  - API keys
+  - Tokens
+  - AWS access keys
+  - Generic secrets
+- Supports value-based detection for structured secrets such as AWS access keys
+- Supports variable-name-based detection for names such as `password`, `api_key`, `token`, and `secret`
+- Applies minimum-length filtering to reduce obvious false positives
+- Assigns severity levels such as `HIGH` and `MEDIUM`
+- Outputs findings with:
+  - File path
+  - Line number
+  - Rule name
+  - Severity
+  - Extracted value
+- Supports human-readable CLI output
+- Supports JSON output with `--json`
+- Supports severity filtering with `--severity`
+- Handles syntax errors gracefully
+- Handles file encoding issues using UTF-8 with ignored decode errors
+- Includes pytest-based unit tests
+- Uses GitHub Actions CI to run tests automatically
 
 ---
 
-## Example Output
+## Example CLI Output
 
+```bash
+python3 main.py test_dirs
 ```
+
+```text
 Scanning 4 Python files...
 
 --- Findings ---
 
+[HIGH] test_dirs/edge_repo/edge_test.py:1 Password → hjkl
 [HIGH] test_dirs/test_repo/open_vulns.py:4 AWS Access Key → AKIAEXAMPLE123456789
 [MEDIUM] test_dirs/test_repo/open_vulns.py:5 Token → xyzttttggfdddf
 [HIGH] test_dirs/test_repo/open_vulns.py:6 API Key → 12dwdqwdqwdqw3
+[MEDIUM] test_dirs/test_repo/open_vulns.py:6 Token → xyzgggggg
 [MEDIUM] test_dirs/test_repo/open_vulns.py:7 Token → abc1234567890j
 
-Total findings: 4
+Total findings: 6
+```
+
+---
+
+## JSON Output
+
+SentinelScan can output machine-readable JSON for automation, scripting, or CI/CD workflows.
+
+```bash
+python3 main.py test_dirs --json
+```
+
+Example:
+
+```json
+[
+  {
+    "line": 1,
+    "file": "test_dirs/edge_repo/edge_test.py",
+    "rule": "Password",
+    "severity": "HIGH",
+    "value": "hjkl"
+  },
+  {
+    "line": 4,
+    "file": "test_dirs/test_repo/open_vulns.py",
+    "rule": "AWS Access Key",
+    "severity": "HIGH",
+    "value": "AKIAEXAMPLE123456789"
+  }
+]
+```
+
+JSON mode prints only valid JSON, without extra CLI headers or summary text.
+
+---
+
+## Severity Filtering
+
+Use `--severity` to show only findings at a specific severity level.
+
+```bash
+python3 main.py test_dirs --severity HIGH
+```
+
+JSON output and severity filtering can be combined:
+
+```bash
+python3 main.py test_dirs --json --severity HIGH
+```
+
+Supported severity values:
+
+```text
+HIGH
+MEDIUM
 ```
 
 ---
@@ -53,82 +131,243 @@ git clone https://github.com/your-username/SentinelScan.git
 cd SentinelScan
 ```
 
-(Optional) Create and activate a virtual environment:
+Optional: create and activate a virtual environment.
 
 ```bash
 python3 -m venv venv
-source venv/bin/activate  # macOS/Linux
+source venv/bin/activate
 ```
+
+Install test dependencies:
+
+```bash
+python3 -m pip install pytest
+```
+
+SentinelScan currently uses only Python standard-library modules at runtime.
 
 ---
 
 ## Usage
 
-Run the scanner on a target directory:
+Scan a directory:
 
 ```bash
 python3 main.py ./your_directory
+```
+
+Scan a test directory:
+
+```bash
+python3 main.py test_dirs
+```
+
+Output JSON:
+
+```bash
+python3 main.py test_dirs --json
+```
+
+Filter by severity:
+
+```bash
+python3 main.py test_dirs --severity HIGH
+```
+
+Use JSON and severity filtering together:
+
+```bash
+python3 main.py test_dirs --json --severity HIGH
 ```
 
 ---
 
 ## How It Works
 
-1. Validates the input directory  
-2. Recursively collects all Python files (`.py`)  
-3. Reads files line-by-line (safe encoding handling)  
-4. Strips comments and ignores empty lines  
-5. Applies regex-based detection rules  
-6. Extracts and reports detected secrets with severity levels  
+1. Parses CLI arguments with `argparse`
+2. Validates that the provided path is a directory
+3. Recursively discovers Python files
+4. Reads each Python file safely
+5. Parses source code into a Python AST
+6. Finds assignment nodes
+7. Extracts string literal values
+8. Extracts variable paths from simple variables and nested attributes
+9. Classifies extracted variable/value pairs using detection rules
+10. Filters results by severity when requested
+11. Outputs results as text or JSON
 
 ---
 
-## Detection Logic
+## Detection Engine
 
-- Regex rules are **precompiled** using `re.compile()` for performance  
-- Capture groups are used to extract only the **secret value**  
-- Minimum length constraints (e.g., `{6,}`) reduce trivial matches  
-- Multiple matches per line are supported using `re.finditer()`  
+SentinelScan uses a rule-based detection engine.
+
+Rules can be:
+
+### Variable-name-based
+
+These rules detect secrets based on suspicious variable names and minimum value length.
+
+Examples:
+
+```python
+password = "abcdef"
+self.config.db.password = "abcdef"
+api_key = "12345678"
+token = "qwerty123"
+client_secret = "abcdef"
+```
+
+### Value-pattern-based
+
+These rules detect secrets based on the value itself.
+
+Example:
+
+```python
+random_var = "AKIAEXAMPLE123456789"
+```
+
+This can still be flagged as an AWS access key even if the variable name is not suspicious.
+
+---
+
+## Supported Assignment Patterns
+
+SentinelScan currently supports:
+
+```python
+password = "abcdef"
+self.password = "abcdef"
+self.config.db.password = "abcdef"
+a = password = "abcdef"
+password = token = "abcdef"
+```
+
+It intentionally ignores unsupported or non-string assignments such as:
+
+```python
+password = 123456
+config["password"] = "abcdef"
+password = os.getenv("PASSWORD")
+```
+
+---
+
+## Testing
+
+Run all tests:
+
+```bash
+pytest
+```
+
+Or:
+
+```bash
+python3 -m pytest
+```
+
+The test suite covers:
+
+- AST-based secret detection
+- Rule classification
+- Variable-name-based detection
+- Value-pattern-based detection
+- Multiple assignments
+- Multiple assignment targets
+- Nested attributes
+- Syntax error handling
+- Non-string assignments
+- JSON-compatible finding structure
+- Severity behavior through filtering logic
+
+---
+
+## Continuous Integration
+
+SentinelScan uses GitHub Actions to run tests automatically on pushes and pull requests.
+
+Workflow file:
+
+```text
+.github/workflows/tests.yaml
+```
+
+The workflow:
+
+- Checks out the repository
+- Sets up Python
+- Installs pytest
+- Runs the test suite
 
 ---
 
 ## Project Structure
 
+```text
+SENTINELSCAN/
+├── .github/
+│   └── workflows/
+│       └── tests.yaml              # GitHub Actions workflow for pytest
+├── detectors/
+│   ├── __init__.py                 # Makes detectors an importable package
+│   └── find_secrets.py             # AST parsing and secret detection rules
+├── test_dirs/
+│   ├── edge_repo/
+│   │   └── edge_test.py            # Edge-case test fixture code
+│   └── test_repo/
+│       ├── embedded_test/
+│       │   └── embedded_hello.py   # Nested test fixture file
+│       ├── hello.py                # Benign test fixture file
+│       └── open_vulns.py           # Test fixture containing sample vulnerabilities
+├── tests/
+│   ├── test_ast.py                 # Tests for AST-based detection
+│   └── test_detect_from_parts.py   # Tests for rule classification logic
+├── .gitignore
+├── cli.py                          # CLI argument parsing
+├── LICENSE
+├── main.py                         # Application entry point
+├── pytest.ini                      # Pytest import path configuration
+├── README                          # Project documentation
+└── scanner.py                      # File discovery, scanning, filtering, and output
 ```
-SentinelScan/
-│── main.py              # Entry point and execution flow
-│── cli.py               # CLI argument parsing
-│── scanner.py           # File traversal and scanning logic
-│── detectors/
-│   └── find_secrets.py  # Regex rules and detection engine
-```
+
+Generated local files such as `__pycache__/`, `.pytest_cache/`, and `venv/` may appear during development but should not be committed.
 
 ---
 
-## Limitations
+## Current Limitations
 
-- Detection is **regex-based** and may still produce false positives  
-- Does not perform context-aware or semantic analysis  
-- Does not detect obfuscated or encoded secrets  
-- Currently supports only Python files (`.py`)  
+- Only scans Python files (`.py`)
+- Only analyzes assignment statements supported by the current AST logic
+- Does not currently support dictionary/subscript assignments such as `config["password"] = "value"`
+- Does not currently detect secrets passed directly into function calls
+- Does not perform entropy scoring yet
+- Does not perform deep data-flow or taint analysis
+- Detection rules may still produce false positives or false negatives
+- Values are currently reported directly in output, which is useful for learning but may need redaction for production use
 
 ---
 
-## Future Improvements
+## Roadmap
 
-- Expand detection rules (JWTs, private keys, etc.)  
-- Further reduce false positives with smarter heuristics  
-- Add JSON / machine-readable output  
-- Add CLI flags (e.g., severity filtering, output formats)  
-- Support additional file types beyond Python  
-- Implement configuration for custom detection rules  
+Potential future improvements:
+
+- Add entropy-based scoring for random-looking secrets
+- Add confidence scoring and detection reasons
+- Add support for dictionary/subscript assignments
+- Add support for annotated assignments
+- Add secret value redaction option
+- Add config file support
+- Add ignore rules for files, directories, or specific findings
+- Add SARIF output for GitHub code scanning integration
+- Add broader secret patterns such as JWTs and private keys
+- Add CLI tests for output behavior
+- Add benchmark fixtures for larger repositories
 
 ---
 
 ## License
 
 This project is for educational and demonstration purposes.
-
-
-
-
