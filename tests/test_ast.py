@@ -62,7 +62,7 @@ def test_ast_aws_access_key_with_api_key_variable():
 
 # Ignore non-string assignments
 def test_ast_non_string():
-    code = 'password = 123456'
+    code = "password = 123456"
     result = detect_ast_secrets(code)
 
     assert result == []
@@ -86,11 +86,11 @@ def test_ast_short_value():
 
 # Validate multiple assignments and correct line numbers
 def test_ast_multiple_assignments():
-    code = '''
+    code = """
     password = "abcdef"
     api_key = "12345678"
     token = "qwerty123"
-    '''
+    """
     result = detect_ast_secrets(code)
 
     assert result == [
@@ -169,10 +169,10 @@ def test_ast_complex_password_value():
 
 # Handle indented multiline code by normalizing indentation
 def test_ast_dedented_multiline_code():
-    code = '''
+    code = """
         password = "abcdef"
         username = "notsecret"
-    '''
+    """
     result = detect_ast_secrets(code)
 
     assert result == [(2, "Password", "HIGH", "abcdef")]

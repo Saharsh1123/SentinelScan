@@ -2,6 +2,7 @@ from pathlib import Path
 from detectors.find_secrets import detect_ast_secrets
 import json
 
+
 def check_path(input_path):
     """
     Validate that the provided path exists and is a directory.
@@ -20,9 +21,7 @@ def check_path(input_path):
     if path.is_dir():
         return path
 
-    raise FileNotFoundError(
-        f"'{input_path}' does not exist or is not a directory!"
-    )
+    raise FileNotFoundError(f"'{input_path}' does not exist or is not a directory!")
 
 
 def list_python_files(path):
@@ -69,7 +68,6 @@ def scan(files):
     findings = []
 
     for file in files:
-
         # Read file content safely before passing it to the AST detector
         with open(file, "r", encoding="utf-8", errors="ignore") as f:
             content = f.read()
@@ -150,17 +148,13 @@ def output(filtered_findings, use_json, files):
         return
 
     print(f"Scanning {len(files)} Python files...")
-    
+
     if not filtered_findings:
         print("\nNo vulnerabilities found.")
     else:
         print("\n--- Findings ---\n")
 
-        for line_number, file, rule_name, severity, value in filtered_findings:      
-            print(
-                f"[{severity}] "
-                f"{file}:{line_number} "
-                f"{rule_name} → {value}"
-            )
+        for line_number, file, rule_name, severity, value in filtered_findings:
+            print(f"[{severity}] {file}:{line_number} {rule_name} → {value}")
 
         print(f"\nTotal findings: {len(filtered_findings)}")

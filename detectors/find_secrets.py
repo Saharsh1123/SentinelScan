@@ -9,35 +9,37 @@ import textwrap
 REGEX_INFO = {
     "AWS Access Key": {
         "value_pattern": re.compile(r"(AKIA[0-9A-Z]{16})"),
-        "severity": "HIGH"
+        "severity": "HIGH",
     },
     "Password": {
         "var_patterns": [
             re.compile(r"password", re.IGNORECASE),
             re.compile(r"pwd", re.IGNORECASE),
-            re.compile(r"passwd", re.IGNORECASE)         
+            re.compile(r"passwd", re.IGNORECASE),
         ],
         "min_length": 4,
-        "severity": "HIGH"
+        "severity": "HIGH",
     },
     "API Key": {
         "var_patterns": [
             re.compile(r"api_key", re.IGNORECASE),
-            re.compile(r"apikey", re.IGNORECASE)
+            re.compile(r"apikey", re.IGNORECASE),
         ],
-        "min_length": 4,        
-        "severity": "HIGH"
+        "min_length": 4,
+        "severity": "HIGH",
     },
     "Token": {
         "var_patterns": [re.compile(r"token", re.IGNORECASE)],
         "min_length": 4,
-        "severity": "MEDIUM"
+        "severity": "MEDIUM",
     },
     "Secret": {
-        "var_patterns": [re.compile(r"secret", re.IGNORECASE),],
+        "var_patterns": [
+            re.compile(r"secret", re.IGNORECASE),
+        ],
         "min_length": 4,
-        "severity": "MEDIUM"
-    }
+        "severity": "MEDIUM",
+    },
 }
 
 
@@ -57,7 +59,7 @@ def parse_ast(file):
         tree = ast.parse(file)
     except SyntaxError:
         return None
-    
+
     return tree
 
 
@@ -71,7 +73,7 @@ def get_assignments(tree):
     Yields:
         ast.Assign: Assignment nodes found during traversal.
     """
-    for node in ast.walk(tree): 
+    for node in ast.walk(tree):
         if isinstance(node, ast.Assign):
             yield node
 
@@ -87,10 +89,7 @@ def extract_node_value(node):
         str | None: String value if valid, otherwise None.
     """
     val = node.value
-    if not(
-        isinstance(val, ast.Constant)
-        and isinstance(val.value, str)
-    ):
+    if not (isinstance(val, ast.Constant) and isinstance(val.value, str)):
         return None
     return val.value
 
@@ -159,7 +158,7 @@ def detect_from_parts(var_name, val):
         # Match suspicious variable names and enforce minimum value length
         if "var_patterns" in data:
             for pattern in data["var_patterns"]:
-                match = pattern.search(var_name) 
+                match = pattern.search(var_name)
                 if match and len(val) >= data["min_length"]:
                     findings.append((rule, data["severity"], val))
 
@@ -204,5 +203,3 @@ def detect_ast_secrets(code):
                     findings.append((line_number, pattern_name, severity, value))
 
     return findings
-
-    

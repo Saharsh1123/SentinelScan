@@ -13,23 +13,16 @@ parser = argparse.ArgumentParser(
 )
 
 # Define required positional argument for the target directory
-parser.add_argument(
-    "path",
-    help="Path to the directory to scan"
-)
+parser.add_argument("path", help="Path to the directory to scan")
 
 # Enable machine-readable JSON output when present
-parser.add_argument(
-    "--json",
-    action="store_true",
-    help="Output findings as JSON"
-)
+parser.add_argument("--json", action="store_true", help="Output findings as JSON")
 
 # Optionally filter displayed findings by severity level
 parser.add_argument(
     "--severity",
     choices=["LOW", "MEDIUM", "HIGH"],
-    help="Only show findings matching the selected severity"
+    help="Only show findings matching the selected severity",
 )
 
 # Parse command-line arguments
@@ -39,4 +32,3 @@ args = parser.parse_args()
 input_path = args.path
 use_json = args.json
 chosen_severity = args.severity
-

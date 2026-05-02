@@ -36,5 +36,3 @@ if __name__ == "__main__":
     except FileNotFoundError as e:
         # Display a user-friendly error message for invalid paths
         print(f"[ERROR] {e}")
-
-
