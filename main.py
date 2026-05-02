@@ -13,7 +13,8 @@ Errors related to invalid input paths are handled gracefully.
 """
 
 from cli import input_path, chosen_severity, use_json
-from scanner import check_path, scan, list_python_files, output, filter_results
+from scanner import check_path, scan, list_python_files
+from output import filter_results, output
 
 
 if __name__ == "__main__":
