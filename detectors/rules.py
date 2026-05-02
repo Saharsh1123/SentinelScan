@@ -9,6 +9,7 @@ RULES = {
     "AWS Access Key": {
         "value_pattern": re.compile(r"(AKIA[0-9A-Z]{16})"),
         "severity": "HIGH",
+        "reason": "value matched AKIA-prefixed AWS access key pattern",
     },
     "Password": {
         "var_patterns": [
@@ -18,6 +19,7 @@ RULES = {
         ],
         "min_length": 4,
         "severity": "HIGH",
+        "reason": "variable name matched password/pwd/passwd pattern and value met minimum length",
     },
     "API Key": {
         "var_patterns": [
@@ -26,11 +28,13 @@ RULES = {
         ],
         "min_length": 4,
         "severity": "HIGH",
+        "reason": "variable name matched api_key/apikey pattern and value met minimum length",
     },
     "Token": {
         "var_patterns": [re.compile(r"token", re.IGNORECASE)],
         "min_length": 4,
         "severity": "MEDIUM",
+        "reason": "variable name matched token pattern and value met minimum length",
     },
     "Secret": {
         "var_patterns": [
@@ -38,5 +42,6 @@ RULES = {
         ],
         "min_length": 4,
         "severity": "MEDIUM",
+        "reason": "variable name matched secret pattern and value met minimum length",
     },
 }

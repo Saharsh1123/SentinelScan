@@ -18,9 +18,9 @@ def filter_results(results, chosen_severity):
             Filtered findings matching the selected severity.
     """
     filtered_findings = []
-    for line_number, file, rule_name, severity, value in results:
+    for line_number, file, rule_name, severity, value, reason in results:
         if severity == chosen_severity or chosen_severity is None:
-            filtered_findings.append((line_number, file, rule_name, severity, value))
+            filtered_findings.append((line_number, file, rule_name, severity, value, reason))
     return filtered_findings
 
 
@@ -36,13 +36,14 @@ def output_json(filtered_findings):
         None
     """
     json_results = []
-    for line_number, file, rule_name, severity, value in filtered_findings:
+    for line_number, file, rule_name, severity, value, reason in filtered_findings:
         finding = {
             "line": line_number,
             "file": str(file),
             "rule": rule_name,
             "severity": severity,
             "value": value,
+            "reason": reason,
         }
         json_results.append(finding)
     print(json.dumps(json_results, indent=2))
@@ -76,7 +77,8 @@ def output(filtered_findings, use_json, files):
     else:
         print("\n--- Findings ---\n")
 
-        for line_number, file, rule_name, severity, value in filtered_findings:
+        for line_number, file, rule_name, severity, value, reason in filtered_findings:
             print(f"[{severity}] {file}:{line_number} {rule_name} → {value}")
+            print(f"       Reason: {reason}\n")
 
         print(f"\nTotal findings: {len(filtered_findings)}")

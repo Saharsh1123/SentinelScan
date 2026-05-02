@@ -22,13 +22,13 @@ def apply_rules(var_name, val):
         # Match structured secret values, such as AWS access keys
         if "value_pattern" in data:
             if data["value_pattern"].fullmatch(val):
-                findings.append((rule, data["severity"], val))
+                findings.append((rule, data["severity"], val, data["reason"]))
 
         # Match suspicious variable names and enforce minimum value length
         if "var_patterns" in data:
             for pattern in data["var_patterns"]:
                 match = pattern.search(var_name)
                 if match and len(val) >= data["min_length"]:
-                    findings.append((rule, data["severity"], val))
+                    findings.append((rule, data["severity"], val, data["reason"]))
 
     return findings or None

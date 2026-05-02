@@ -72,8 +72,8 @@ def scan(files):
             content = f.read()
 
             ast_results = detect_ast_secrets(content)
-            for line_number, rule_name, severity, value in ast_results:
-                findings.append((line_number, file, rule_name, severity, value))
+            for line_number, rule_name, severity, value, reason in ast_results:
+                findings.append((line_number, file, rule_name, severity, value, reason))
 
     return findings
 

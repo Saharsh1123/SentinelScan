@@ -35,7 +35,7 @@ def detect_ast_secrets(code):
             vulnerabilities = apply_rules(var_name, val)
 
             if vulnerabilities:
-                for pattern_name, severity, value in vulnerabilities:
-                    findings.append((line_number, pattern_name, severity, value))
+                for pattern_name, severity, value, reason in vulnerabilities:
+                    findings.append((line_number, pattern_name, severity, value, reason))
 
     return findings
