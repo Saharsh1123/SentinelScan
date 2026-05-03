@@ -1,6 +1,6 @@
 from pathlib import Path
 from detectors.find_secrets import detect_ast_secrets
-
+from dataclasses import replace
 
 def check_path(input_path):
     """
@@ -72,8 +72,9 @@ def scan(files):
             content = f.read()
 
             ast_results = detect_ast_secrets(content)
-            for line_number, rule_name, severity, value, reason in ast_results:
-                findings.append((line_number, file, rule_name, severity, value, reason))
+            for finding in ast_results:
+                finding_with_file = replace(finding, file_path=str(file))
+                findings.append(finding_with_file)
 
     return findings
 

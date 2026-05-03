@@ -52,7 +52,16 @@ def test_cli_json_schema():
     assert isinstance(data, list)
     assert len(data) > 0
 
-    required_keys = {"line", "file", "rule", "severity", "value", "reason"}
+    required_keys = {
+        "line",
+        "file",
+        "var_name",
+        "rule_id",
+        "rule",
+        "severity",
+        "value",
+        "reason",
+    }
 
     for finding in data:
         assert required_keys.issubset(finding.keys())
@@ -71,6 +80,8 @@ def test_cli_json_field_types():
     for finding in data:
         assert isinstance(finding["line"], int)
         assert isinstance(finding["file"], str)
+        assert isinstance(finding["var_name"], str)
+        assert isinstance(finding["rule_id"], str)
         assert isinstance(finding["rule"], str)
         assert isinstance(finding["severity"], str)
         assert isinstance(finding["value"], str)
@@ -124,7 +135,9 @@ def test_cli_json_severity_high_filter():
 
     assert len(data) > 0
     assert all(finding["severity"] == "HIGH" for finding in data)
+    assert all("var_name" in finding for finding in data)
     assert all("reason" in finding for finding in data)
+    assert all("rule_id" in finding for finding in data)
 
 
 # Ensure MEDIUM severity filtering works in JSON mode
@@ -137,7 +150,9 @@ def test_cli_json_severity_medium_filter():
 
     assert len(data) > 0
     assert all(finding["severity"] == "MEDIUM" for finding in data)
+    assert all("var_name" in finding for finding in data)
     assert all("reason" in finding for finding in data)
+    assert all("rule_id" in finding for finding in data)
 
 
 # Ensure HIGH severity filtering works in text mode
@@ -172,7 +187,9 @@ def test_cli_json_and_severity_combined():
 
     assert len(data) > 0
     assert all(finding["severity"] == "HIGH" for finding in data)
+    assert all("var_name" in finding for finding in data)
     assert all("reason" in finding for finding in data)
+    assert all("rule_id" in finding for finding in data)
 
 
 # Ensure invalid severity values are rejected by argparse
@@ -232,6 +249,8 @@ def test_cli_detects_secret_in_temp_directory(tmp_path):
         {
             "line": 1,
             "file": str(vulnerable_file),
+            "var_name": "password",
+            "rule_id": "PASSWORD",
             "rule": "Password",
             "severity": "HIGH",
             "value": "abcdef",
@@ -240,7 +259,7 @@ def test_cli_detects_secret_in_temp_directory(tmp_path):
     ]
 
 
-# Ensure JSON output can be parsed even after severity filtering removes all findings
+# Ensure JSON output can be parsed after severity filtering removes all findings
 def test_cli_json_filter_with_no_matching_findings(tmp_path):
     medium_file = tmp_path / "medium.py"
     medium_file.write_text('token = "abcdef"\n', encoding="utf-8")
@@ -265,3 +284,53 @@ def test_cli_text_filter_with_no_matching_findings(tmp_path):
 
     assert "No vulnerabilities found." in result.stdout
     assert "Reason:" not in result.stdout
+
+
+# Ensure JSON output preserves rule metadata for token findings
+def test_cli_json_token_finding_includes_rule_id_and_reason(tmp_path):
+    token_file = tmp_path / "token_file.py"
+    token_file.write_text('token = "abcdef"\n', encoding="utf-8")
+
+    result = run_cli(str(tmp_path), "--json")
+
+    assert result.returncode == 0
+
+    data = parse_json_output(result)
+
+    assert data == [
+        {
+            "line": 1,
+            "file": str(token_file),
+            "var_name": "token",
+            "rule_id": "TOKEN",
+            "rule": "Token",
+            "severity": "MEDIUM",
+            "value": "abcdef",
+            "reason": TOKEN_REASON,
+        }
+    ]
+
+
+# Ensure JSON severity filtering preserves full finding schema
+def test_cli_json_severity_filter_preserves_schema(tmp_path):
+    password_file = tmp_path / "password_file.py"
+    password_file.write_text('password = "abcdef"\n', encoding="utf-8")
+
+    result = run_cli(str(tmp_path), "--json", "--severity", "HIGH")
+
+    assert result.returncode == 0
+
+    data = parse_json_output(result)
+
+    assert data == [
+        {
+            "line": 1,
+            "file": str(password_file),
+            "var_name": "password",
+            "rule_id": "PASSWORD",
+            "rule": "Password",
+            "severity": "HIGH",
+            "value": "abcdef",
+            "reason": PASSWORD_REASON,
+        }
+    ]

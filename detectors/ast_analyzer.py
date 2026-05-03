@@ -1,5 +1,7 @@
 import ast
 import textwrap
+from detectors.models import Candidate
+
 
 def parse_ast(file):
     """
@@ -34,7 +36,6 @@ def get_assignments(tree):
     for node in ast.walk(tree):
         if isinstance(node, ast.Assign):
             yield node
-
 
 def extract_node_value(node):
     """
@@ -88,3 +89,25 @@ def extract_variable_path(node):
         # Yield only valid, non-empty paths
         if len(full_path) != 0:
             yield full_path
+
+
+def extract_candidates(code):
+    tree = parse_ast(code)
+    if tree is None:
+        return
+
+    for node in get_assignments(tree):
+        val = extract_node_value(node)
+        if val is None:
+            continue
+
+        line_number = node.lineno
+
+        for full_path in extract_variable_path(node):
+            var_name = full_path[-1]
+
+            yield Candidate(
+                line_number=line_number,
+                var_name=var_name,
+                value=val
+            )

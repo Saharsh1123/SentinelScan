@@ -18,9 +18,9 @@ def filter_results(results, chosen_severity):
             Filtered findings matching the selected severity.
     """
     filtered_findings = []
-    for line_number, file, rule_name, severity, value, reason in results:
-        if severity == chosen_severity or chosen_severity is None:
-            filtered_findings.append((line_number, file, rule_name, severity, value, reason))
+    for finding in results:
+        if finding.severity == chosen_severity or chosen_severity is None:
+            filtered_findings.append(finding)
     return filtered_findings
 
 
@@ -36,14 +36,16 @@ def output_json(filtered_findings):
         None
     """
     json_results = []
-    for line_number, file, rule_name, severity, value, reason in filtered_findings:
+    for filtered_finding in filtered_findings:
         finding = {
-            "line": line_number,
-            "file": str(file),
-            "rule": rule_name,
-            "severity": severity,
-            "value": value,
-            "reason": reason,
+            "line": filtered_finding.line_number,
+            "var_name": filtered_finding.var_name,
+            "file": str(filtered_finding.file_path),
+            "rule_id": filtered_finding.rule_id,
+            "rule": filtered_finding.rule_name,
+            "severity": filtered_finding.severity,
+            "value": filtered_finding.value,
+            "reason": filtered_finding.reason,
         }
         json_results.append(finding)
     print(json.dumps(json_results, indent=2))
@@ -77,8 +79,8 @@ def output(filtered_findings, use_json, files):
     else:
         print("\n--- Findings ---\n")
 
-        for line_number, file, rule_name, severity, value, reason in filtered_findings:
-            print(f"[{severity}] {file}:{line_number} {rule_name} → {value}")
-            print(f"       Reason: {reason}\n")
+        for finding in filtered_findings:
+            print(f"[{finding.severity}] {finding.file_path}:{finding.line_number} {finding.rule_name} → {finding.value}")
+            print(f"       Reason: {finding.reason}\n")
 
         print(f"\nTotal findings: {len(filtered_findings)}")
