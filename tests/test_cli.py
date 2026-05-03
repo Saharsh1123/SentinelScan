@@ -3,6 +3,12 @@ import subprocess
 import sys
 
 
+PASSWORD_REASON = (
+    "variable name matched password/pwd/passwd pattern and value met minimum length"
+)
+TOKEN_REASON = "variable name matched token pattern and value met minimum length"
+
+
 def run_cli(*args):
     """
     Run the SentinelScan CLI with the provided arguments.
@@ -46,7 +52,7 @@ def test_cli_json_schema():
     assert isinstance(data, list)
     assert len(data) > 0
 
-    required_keys = {"line", "file", "rule", "severity", "value"}
+    required_keys = {"line", "file", "rule", "severity", "value", "reason"}
 
     for finding in data:
         assert required_keys.issubset(finding.keys())
@@ -68,6 +74,7 @@ def test_cli_json_field_types():
         assert isinstance(finding["rule"], str)
         assert isinstance(finding["severity"], str)
         assert isinstance(finding["value"], str)
+        assert isinstance(finding["reason"], str)
 
 
 # Ensure JSON mode does not include human-readable CLI text
@@ -79,6 +86,7 @@ def test_cli_json_output_is_pure_json():
     assert "Scanning" not in result.stdout
     assert "--- Findings ---" not in result.stdout
     assert "Total findings" not in result.stdout
+    assert "Reason:" not in result.stdout
 
     data = parse_json_output(result)
     assert isinstance(data, list)
@@ -95,7 +103,7 @@ def test_cli_text_output_contains_expected_sections():
     assert "Total findings" in result.stdout
 
 
-# Ensure normal CLI output contains finding details
+# Ensure normal CLI output contains finding details and reasons
 def test_cli_text_output_contains_finding_details():
     result = run_cli("test_dirs")
 
@@ -103,6 +111,7 @@ def test_cli_text_output_contains_finding_details():
 
     assert "[HIGH]" in result.stdout
     assert "→" in result.stdout
+    assert "Reason:" in result.stdout
 
 
 # Ensure HIGH severity filtering works in JSON mode
@@ -115,6 +124,7 @@ def test_cli_json_severity_high_filter():
 
     assert len(data) > 0
     assert all(finding["severity"] == "HIGH" for finding in data)
+    assert all("reason" in finding for finding in data)
 
 
 # Ensure MEDIUM severity filtering works in JSON mode
@@ -127,6 +137,7 @@ def test_cli_json_severity_medium_filter():
 
     assert len(data) > 0
     assert all(finding["severity"] == "MEDIUM" for finding in data)
+    assert all("reason" in finding for finding in data)
 
 
 # Ensure HIGH severity filtering works in text mode
@@ -137,6 +148,7 @@ def test_cli_text_severity_high_filter():
 
     assert "[HIGH]" in result.stdout
     assert "[MEDIUM]" not in result.stdout
+    assert "Reason:" in result.stdout
 
 
 # Ensure MEDIUM severity filtering works in text mode
@@ -147,6 +159,7 @@ def test_cli_text_severity_medium_filter():
 
     assert "[MEDIUM]" in result.stdout
     assert "[HIGH]" not in result.stdout
+    assert "Reason:" in result.stdout
 
 
 # Ensure JSON output and severity filtering work together
@@ -159,6 +172,7 @@ def test_cli_json_and_severity_combined():
 
     assert len(data) > 0
     assert all(finding["severity"] == "HIGH" for finding in data)
+    assert all("reason" in finding for finding in data)
 
 
 # Ensure invalid severity values are rejected by argparse
@@ -186,6 +200,7 @@ def test_cli_no_findings_text_output(tmp_path):
     assert result.returncode == 0
 
     assert "No vulnerabilities found." in result.stdout
+    assert "Reason:" not in result.stdout
 
 
 # Ensure benign Python files produce an empty JSON list
@@ -220,6 +235,7 @@ def test_cli_detects_secret_in_temp_directory(tmp_path):
             "rule": "Password",
             "severity": "HIGH",
             "value": "abcdef",
+            "reason": PASSWORD_REASON,
         }
     ]
 
@@ -248,3 +264,4 @@ def test_cli_text_filter_with_no_matching_findings(tmp_path):
     assert result.returncode == 0
 
     assert "No vulnerabilities found." in result.stdout
+    assert "Reason:" not in result.stdout
