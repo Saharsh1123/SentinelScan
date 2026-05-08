@@ -7,6 +7,7 @@ PASSWORD_REASON = (
     "variable name matched password/pwd/passwd pattern and value met minimum length"
 )
 TOKEN_REASON = "variable name matched token pattern and value met minimum length"
+AWS_REASON = "value matched AKIA-prefixed AWS access key pattern"
 
 
 def run_cli(*args):
@@ -334,3 +335,257 @@ def test_cli_json_severity_filter_preserves_schema(tmp_path):
             "reason": PASSWORD_REASON,
         }
     ]
+
+
+# Ensure normal text output shows original values when --redact is not used
+def test_cli_text_output_is_unredacted_by_default(tmp_path):
+    password_file = tmp_path / "password_file.py"
+    password_file.write_text('password = "abcdef"\n', encoding="utf-8")
+
+    result = run_cli(str(tmp_path))
+
+    assert result.returncode == 0
+
+    assert "abcdef" in result.stdout
+    assert "a****f" not in result.stdout
+    assert "[REDACTED]" not in result.stdout
+
+
+# Ensure text output redacts detected values when --redact is used
+def test_cli_text_redact_masks_secret_value(tmp_path):
+    password_file = tmp_path / "password_file.py"
+    password_file.write_text('password = "abcdef"\n', encoding="utf-8")
+
+    result = run_cli(str(tmp_path), "--redact")
+
+    assert result.returncode == 0
+
+    assert "a****f" in result.stdout
+    assert "abcdef" not in result.stdout
+    assert "Reason:" in result.stdout
+    assert "Password" in result.stdout
+
+
+# Ensure JSON output shows original values when --redact is not used
+def test_cli_json_output_is_unredacted_by_default(tmp_path):
+    password_file = tmp_path / "password_file.py"
+    password_file.write_text('password = "abcdef"\n', encoding="utf-8")
+
+    result = run_cli(str(tmp_path), "--json")
+
+    assert result.returncode == 0
+
+    data = parse_json_output(result)
+
+    assert data == [
+        {
+            "line": 1,
+            "file": str(password_file),
+            "var_name": "password",
+            "rule_id": "PASSWORD",
+            "rule": "Password",
+            "severity": "HIGH",
+            "value": "abcdef",
+            "reason": PASSWORD_REASON,
+        }
+    ]
+
+
+# Ensure JSON output redacts values when --redact is used
+def test_cli_json_redact_masks_secret_value(tmp_path):
+    password_file = tmp_path / "password_file.py"
+    password_file.write_text('password = "abcdef"\n', encoding="utf-8")
+
+    result = run_cli(str(tmp_path), "--json", "--redact")
+
+    assert result.returncode == 0
+
+    data = parse_json_output(result)
+
+    assert data == [
+        {
+            "line": 1,
+            "file": str(password_file),
+            "var_name": "password",
+            "rule_id": "PASSWORD",
+            "rule": "Password",
+            "severity": "HIGH",
+            "value": "a****f",
+            "reason": PASSWORD_REASON,
+        }
+    ]
+
+
+# Ensure JSON redaction keeps output machine-readable and pure JSON
+def test_cli_json_redact_output_is_pure_json(tmp_path):
+    password_file = tmp_path / "password_file.py"
+    password_file.write_text('password = "abcdef"\n', encoding="utf-8")
+
+    result = run_cli(str(tmp_path), "--json", "--redact")
+
+    assert result.returncode == 0
+
+    assert "Scanning" not in result.stdout
+    assert "--- Findings ---" not in result.stdout
+    assert "Total findings" not in result.stdout
+    assert "Reason:" not in result.stdout
+
+    data = parse_json_output(result)
+
+    assert isinstance(data, list)
+    assert data[0]["value"] == "a****f"
+
+
+# Ensure --json, --severity, and --redact work together
+def test_cli_json_severity_and_redact_combined(tmp_path):
+    findings_file = tmp_path / "findings.py"
+    findings_file.write_text(
+        'password = "abcdef"\n'
+        'token = "qwerty123"\n',
+        encoding="utf-8",
+    )
+
+    result = run_cli(str(tmp_path), "--json", "--severity", "HIGH", "--redact")
+
+    assert result.returncode == 0
+
+    data = parse_json_output(result)
+
+    assert data == [
+        {
+            "line": 1,
+            "file": str(findings_file),
+            "var_name": "password",
+            "rule_id": "PASSWORD",
+            "rule": "Password",
+            "severity": "HIGH",
+            "value": "a****f",
+            "reason": PASSWORD_REASON,
+        }
+    ]
+
+
+# Ensure text severity filtering and redaction work together
+def test_cli_text_severity_and_redact_combined(tmp_path):
+    findings_file = tmp_path / "findings.py"
+    findings_file.write_text(
+        'password = "abcdef"\n'
+        'token = "qwerty123"\n',
+        encoding="utf-8",
+    )
+
+    result = run_cli(str(tmp_path), "--severity", "HIGH", "--redact")
+
+    assert result.returncode == 0
+
+    assert "[HIGH]" in result.stdout
+    assert "[MEDIUM]" not in result.stdout
+    assert "a****f" in result.stdout
+    assert "abcdef" not in result.stdout
+    assert "qwerty123" not in result.stdout
+
+
+# Ensure short detected values are fully redacted
+def test_cli_json_redact_short_boundary_value(tmp_path):
+    password_file = tmp_path / "password_file.py"
+    password_file.write_text('password = "abcd"\n', encoding="utf-8")
+
+    result = run_cli(str(tmp_path), "--json", "--redact")
+
+    assert result.returncode == 0
+
+    data = parse_json_output(result)
+
+    assert data == [
+        {
+            "line": 1,
+            "file": str(password_file),
+            "var_name": "password",
+            "rule_id": "PASSWORD",
+            "rule": "Password",
+            "severity": "HIGH",
+            "value": "[REDACTED]",
+            "reason": PASSWORD_REASON,
+        }
+    ]
+
+
+# Ensure longer detected values preserve only limited prefix/suffix context
+def test_cli_json_redact_long_value(tmp_path):
+    password_file = tmp_path / "password_file.py"
+    password_file.write_text('password = "abc_def-123#$%^&*()"\n', encoding="utf-8")
+
+    result = run_cli(str(tmp_path), "--json", "--redact")
+
+    assert result.returncode == 0
+
+    data = parse_json_output(result)
+
+    assert data == [
+        {
+            "line": 1,
+            "file": str(password_file),
+            "var_name": "password",
+            "rule_id": "PASSWORD",
+            "rule": "Password",
+            "severity": "HIGH",
+            "value": "ab***************()",
+            "reason": PASSWORD_REASON,
+        }
+    ]
+
+
+# Ensure AWS access key values are redacted in JSON output
+def test_cli_json_redact_aws_access_key(tmp_path):
+    aws_file = tmp_path / "aws_file.py"
+    aws_file.write_text(
+        'random_var = "AKIAEXAMPLE123456789"\n',
+        encoding="utf-8",
+    )
+
+    result = run_cli(str(tmp_path), "--json", "--redact")
+
+    assert result.returncode == 0
+
+    data = parse_json_output(result)
+
+    assert data == [
+        {
+            "line": 1,
+            "file": str(aws_file),
+            "var_name": "random_var",
+            "rule_id": "AWS_ACCESS_KEY",
+            "rule": "AWS Access Key",
+            "severity": "HIGH",
+            "value": "AK****************89",
+            "reason": AWS_REASON,
+        }
+    ]
+
+
+# Ensure no-finding JSON output remains an empty list even with --redact
+def test_cli_no_findings_json_with_redact(tmp_path):
+    benign_file = tmp_path / "safe.py"
+    benign_file.write_text('username = "notsecret"\n', encoding="utf-8")
+
+    result = run_cli(str(tmp_path), "--json", "--redact")
+
+    assert result.returncode == 0
+
+    data = parse_json_output(result)
+
+    assert data == []
+
+
+# Ensure no-finding text output does not print redaction artifacts
+def test_cli_no_findings_text_with_redact(tmp_path):
+    benign_file = tmp_path / "safe.py"
+    benign_file.write_text('username = "notsecret"\n', encoding="utf-8")
+
+    result = run_cli(str(tmp_path), "--redact")
+
+    assert result.returncode == 0
+
+    assert "No vulnerabilities found." in result.stdout
+    assert "[REDACTED]" not in result.stdout
+    assert "Reason:" not in result.stdout
