@@ -25,10 +25,17 @@ parser.add_argument(
     help="Only show findings matching the selected severity",
 )
 
+parser.add_argument(
+    "--redact",
+    action="store_true",
+    help="Redact found secret values",
+)
+
 # Parse command-line arguments
 args = parser.parse_args()
 
 # Extract parsed CLI values for use by the application
 input_path = args.path
 use_json = args.json
+redact_secrets = args.redact
 chosen_severity = args.severity

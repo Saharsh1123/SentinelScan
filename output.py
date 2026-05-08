@@ -1,5 +1,19 @@
 import json
 
+def redact_value(value):
+    """
+    Redact a detected secret while preserving limited identifying context.
+
+    Short values are fully redacted. Longer values keep a small prefix and
+    suffix so users can identify which secret was found without exposing it.
+    """
+    if not value or len(value) <= 4:
+        return "[REDACTED]"
+
+    if len(value) <= 8:
+        return f"{value[0]}{'*' * (len(value) - 2)}{value[-1]}"
+
+    return f"{value[:2]}{'*' * (len(value) - 4)}{value[-2:]}"
 
 def filter_results(results, chosen_severity):
     """
@@ -24,7 +38,7 @@ def filter_results(results, chosen_severity):
     return filtered_findings
 
 
-def output_json(filtered_findings):
+def output_json(filtered_findings, redact_secrets):
     """
     Output findings in machine-readable JSON format.
 
@@ -37,6 +51,9 @@ def output_json(filtered_findings):
     """
     json_results = []
     for filtered_finding in filtered_findings:
+        value = filtered_finding.value
+        if redact_secrets:
+            value = redact_value(value)
         finding = {
             "line": filtered_finding.line_number,
             "var_name": filtered_finding.var_name,
@@ -44,14 +61,14 @@ def output_json(filtered_findings):
             "rule_id": filtered_finding.rule_id,
             "rule": filtered_finding.rule_name,
             "severity": filtered_finding.severity,
-            "value": filtered_finding.value,
+            "value": value,
             "reason": filtered_finding.reason,
         }
         json_results.append(finding)
     print(json.dumps(json_results, indent=2))
 
 
-def output(filtered_findings, use_json, files):
+def output(filtered_findings, use_json, redact_secrets, files):
     """
     Display scan results in either JSON or human-readable CLI format.
 
@@ -69,7 +86,7 @@ def output(filtered_findings, use_json, files):
         None
     """
     if use_json:
-        output_json(filtered_findings)
+        output_json(filtered_findings, redact_secrets)
         return
 
     print(f"Scanning {len(files)} Python files...")
@@ -80,7 +97,10 @@ def output(filtered_findings, use_json, files):
         print("\n--- Findings ---\n")
 
         for finding in filtered_findings:
-            print(f"[{finding.severity}] {finding.file_path}:{finding.line_number} {finding.rule_name} → {finding.value}")
+            display_value = finding.value
+            if redact_secrets:
+                display_value = redact_value(display_value)
+            print(f"[{finding.severity}] {finding.file_path}:{finding.line_number} {finding.rule_name} → {display_value}")
             print(f"       Reason: {finding.reason}\n")
 
         print(f"\nTotal findings: {len(filtered_findings)}")

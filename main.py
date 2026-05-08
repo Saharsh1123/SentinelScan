@@ -12,7 +12,7 @@ This module orchestrates the execution flow of the application:
 Errors related to invalid input paths are handled gracefully.
 """
 
-from cli import input_path, chosen_severity, use_json
+from cli import input_path, chosen_severity, use_json, redact_secrets
 from scanner import check_path, scan, list_python_files
 from output import filter_results, output
 
@@ -32,7 +32,7 @@ if __name__ == "__main__":
         filtered_findings = filter_results(results, chosen_severity)
 
         # Output results in the selected format
-        output(filtered_findings, use_json, files)
+        output(filtered_findings, use_json, redact_secrets, files)
 
     except FileNotFoundError as e:
         # Display a user-friendly error message for invalid paths
