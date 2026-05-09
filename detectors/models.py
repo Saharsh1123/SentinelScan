@@ -51,3 +51,5 @@ class Finding:
     rule_name: str
     severity: str
     reason: str
+    entropy: int | None = None
+    confidence: str

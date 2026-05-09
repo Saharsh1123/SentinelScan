@@ -64,6 +64,8 @@ def output_json(filtered_findings, redact_secrets):
             "severity": filtered_finding.severity,
             "value": value,
             "reason": filtered_finding.reason,
+            "entropy": filtered_finding.entropy,
+            "confidence": filtered_finding.confidence,
         }
         json_results.append(finding)
 
@@ -104,6 +106,7 @@ def output(filtered_findings, use_json, redact_secrets, files):
                 f"{finding.file_path}:{finding.line_number} "
                 f"{finding.rule_name} → {display_value}"
             )
+            print(f"       Confidence: {finding.confidence}")
             print(f"       Reason: {finding.reason}\n")
 
         print(f"\nTotal findings: {len(filtered_findings)}")

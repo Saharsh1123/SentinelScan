@@ -1,6 +1,6 @@
 from detectors.rules import RULES
 from detectors.models import Finding
-
+from detectors.confidence import calculate_confidence, calculate_entropy
 
 def apply_rules(candidate):
     """
@@ -17,6 +17,7 @@ def apply_rules(candidate):
     for rule in RULES:
         val = candidate.value
         var_name = candidate.var_name
+        entropy = calculate_entropy(val)
 
         # Match structured secret values, such as AWS access keys.
         if rule.value_pattern is not None:
@@ -30,6 +31,8 @@ def apply_rules(candidate):
                         severity=rule.severity,
                         value=val,
                         reason=rule.reason,
+                        entropy=entropy,
+                        confidence="HIGH",
                     )
                 )
 
@@ -37,6 +40,8 @@ def apply_rules(candidate):
         if rule.var_patterns:
             for var_pattern in rule.var_patterns:
                 match = var_pattern.search(var_name)
+                entropy = calculate_entropy(val)
+                confidence = calculate_confidence(val)
 
                 if (
                     match
@@ -52,6 +57,8 @@ def apply_rules(candidate):
                             severity=rule.severity,
                             value=val,
                             reason=rule.reason,
+                            entropy=entropy,
+                            confidence=confidence,
                         )
                     )
 
