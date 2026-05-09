@@ -1,6 +1,8 @@
-from pathlib import Path
-from detectors.find_secrets import detect_ast_secrets
 from dataclasses import replace
+from pathlib import Path
+
+from detectors.find_secrets import detect_ast_secrets
+
 
 def check_path(input_path):
     """
@@ -10,7 +12,7 @@ def check_path(input_path):
         input_path (str | Path): Path to validate.
 
     Returns:
-        Path: A Path object pointing to a valid directory.
+        Path: Valid directory path.
 
     Raises:
         FileNotFoundError: If the path does not exist or is not a directory.
@@ -25,56 +27,53 @@ def check_path(input_path):
 
 def list_python_files(path):
     """
-    Recursively discover all Python (.py) files within a directory.
+    Recursively find Python files within a directory.
 
     Args:
         path (Path): Root directory to search.
 
     Returns:
-        list[Path]: List of Python file paths found in the directory tree.
+        list[Path]: Python files discovered under the root directory.
     """
     return list(path.rglob("*.py"))
 
 
 def scan(files):
     """
-    Scan a collection of Python files for hardcoded secrets.
+    Scan Python files for hardcoded secrets.
 
-    Each file is read into memory and analyzed using the AST-based detection
-    engine. All detected findings are collected and returned for filtering
-    and output formatting.
+    Reads each file, runs AST-based detection, attaches the source file path
+    to each finding, and returns all findings for filtering or output.
 
     Args:
-        files (list[Path]): List of Python files to scan.
+        files (list[Path]): Python files to scan.
 
     Returns:
-        list[tuple[int, Path, str, str, str]]:
-            A list of findings where each finding is a tuple:
-                (line_number, file_path, rule_name, severity, matched_value)
-
-        Returns an empty list if no findings are detected or if no files are provided.
+        list[Finding]: Findings detected across all scanned files.
 
     Behavior:
-        - Processes files in sorted order for consistent output
-        - Ignores encoding errors to prevent scan interruptions
-        - Supports multiple detections per file
+        - Processes files in sorted order for deterministic output
+        - Ignores encoding errors to avoid scan interruptions
+        - Supports multiple findings per file
     """
     if not files:
         print("No Python files found.")
         return []
 
-    files = sorted(files)  # Ensure deterministic output order
+    files = sorted(files)
     findings = []
 
     for file in files:
-        # Read file content safely before passing it to the AST detector
+        # Read file content safely before passing it to the AST detector.
         with open(file, "r", encoding="utf-8", errors="ignore") as f:
             content = f.read()
 
-            ast_results = detect_ast_secrets(content)
-            for finding in ast_results:
-                finding_with_file = replace(finding, file_path=str(file))
-                findings.append(finding_with_file)
+        ast_results = detect_ast_secrets(content)
+
+        for finding in ast_results:
+            # Attach file context at the scanner layer, where file paths are known.
+            finding_with_file = replace(finding, file_path=str(file))
+            findings.append(finding_with_file)
 
     return findings
 

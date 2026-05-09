@@ -1,7 +1,15 @@
+"""
+Built-in detection rules for SentinelScan.
+
+Rules are declarative configuration objects consumed by the rule engine.
+Each rule defines matching criteria, severity, and the reason shown in output.
+"""
+
 import re
 from detectors.models import Rule
 
 
+# Detect AWS access keys by value format, regardless of variable name.
 AWS_ACCESS_KEY = Rule(
     rule_id="AWS_ACCESS_KEY",
     rule_name="AWS Access Key",
@@ -10,6 +18,7 @@ AWS_ACCESS_KEY = Rule(
     value_pattern=re.compile(r"(AKIA[0-9A-Z]{16})"),
 )
 
+# Detect password-like variable names with string values above the length threshold.
 PASSWORD = Rule(
     rule_id="PASSWORD",
     rule_name="Password",
@@ -23,6 +32,7 @@ PASSWORD = Rule(
     min_length=4,
 )
 
+# Detect API key variable names with string values above the length threshold.
 API_KEY = Rule(
     rule_id="API_KEY",
     rule_name="API Key",
@@ -35,6 +45,7 @@ API_KEY = Rule(
     min_length=4,
 )
 
+# Detect token variable names with string values above the length threshold.
 TOKEN = Rule(
     rule_id="TOKEN",
     rule_name="Token",
@@ -44,6 +55,7 @@ TOKEN = Rule(
     min_length=4,
 )
 
+# Detect generic secret variable names with string values above the length threshold.
 SECRET = Rule(
     rule_id="SECRET",
     rule_name="Secret",
@@ -54,6 +66,7 @@ SECRET = Rule(
 )
 
 
+# Ordered list of rules evaluated against each extracted candidate.
 RULES = [
     AWS_ACCESS_KEY,
     PASSWORD,
@@ -61,4 +74,3 @@ RULES = [
     TOKEN,
     SECRET,
 ]
-

@@ -1,40 +1,39 @@
 """
-Command-line interface (CLI) configuration for SentinelScan.
+CLI argument configuration for SentinelScan.
 
-Parses user input to retrieve the target directory path, output format,
-and optional severity filter for scanning.
+Parses the target scan path and optional output controls.
 """
 
 import argparse
 
-# Initialize argument parser for CLI input
+
 parser = argparse.ArgumentParser(
     description="Scan a directory for hardcoded secrets in Python files"
 )
 
-# Define required positional argument for the target directory
+# Required target directory to scan.
 parser.add_argument("path", help="Path to the directory to scan")
 
-# Enable machine-readable JSON output when present
+# Output findings as machine-readable JSON.
 parser.add_argument("--json", action="store_true", help="Output findings as JSON")
 
-# Optionally filter displayed findings by severity level
+# Limit displayed findings to a selected severity.
 parser.add_argument(
     "--severity",
     choices=["LOW", "MEDIUM", "HIGH"],
     help="Only show findings matching the selected severity",
 )
 
+# Mask detected secret values in text or JSON output.
 parser.add_argument(
     "--redact",
     action="store_true",
-    help="Redact found secret values",
+    help="Redact detected secret values",
 )
 
-# Parse command-line arguments
 args = parser.parse_args()
 
-# Extract parsed CLI values for use by the application
+# Export parsed values for the application entry point.
 input_path = args.path
 use_json = args.json
 redact_secrets = args.redact

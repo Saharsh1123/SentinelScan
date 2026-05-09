@@ -1,15 +1,7 @@
 """
-SentinelScan CLI entry point.
+SentinelScan application entry point.
 
-This module orchestrates the execution flow of the application:
-- Parses user-provided input from the CLI
-- Validates the target directory
-- Discovers Python files recursively
-- Executes the scanning engine
-- Applies optional severity filtering
-- Outputs results as human-readable text or JSON
-
-Errors related to invalid input paths are handled gracefully.
+Coordinates CLI input, file discovery, scanning, filtering, and output.
 """
 
 from cli import input_path, chosen_severity, use_json, redact_secrets
@@ -19,21 +11,21 @@ from output import filter_results, output
 
 if __name__ == "__main__":
     try:
-        # Validate input path and ensure it is a valid directory
+        # Validate the target directory.
         path = check_path(input_path)
 
-        # Discover all Python files within the target directory
+        # Discover Python files to scan.
         files = list_python_files(path)
 
-        # Run the scanning engine and collect all findings
+        # Scan files and collect findings.
         results = scan(files)
 
-        # Apply optional severity filtering before output formatting
+        # Apply optional severity filtering.
         filtered_findings = filter_results(results, chosen_severity)
 
-        # Output results in the selected format
+        # Render findings as text or JSON, with optional redaction.
         output(filtered_findings, use_json, redact_secrets, files)
 
     except FileNotFoundError as e:
-        # Display a user-friendly error message for invalid paths
+        # Report invalid paths without showing a traceback.
         print(f"[ERROR] {e}")
