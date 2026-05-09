@@ -9,6 +9,8 @@ PASSWORD_REASON = (
 TOKEN_REASON = "variable name matched token pattern and value met minimum length"
 AWS_REASON = "value matched AKIA-prefixed AWS access key pattern"
 
+SUPPORTED_CONFIDENCE = {"LOW", "MEDIUM", "HIGH"}
+
 
 def run_cli(*args):
     """
@@ -28,6 +30,64 @@ def parse_json_output(result):
     Parse CLI stdout as JSON.
     """
     return json.loads(result.stdout)
+
+
+def get_entropy(finding):
+    """
+    Return entropy from a JSON finding.
+
+    Supports either `entropy` or `entropy_score` if the output field name
+    changes during refactoring.
+    """
+    if "entropy" in finding:
+        return finding["entropy"]
+
+    if "entropy_score" in finding:
+        return finding["entropy_score"]
+
+    raise AssertionError("JSON finding is missing entropy metadata")
+
+
+def assert_entropy_metadata(finding):
+    entropy = get_entropy(finding)
+
+    assert isinstance(entropy, (int, float))
+    assert entropy >= 0
+
+
+def assert_json_finding(
+    finding,
+    *,
+    line,
+    file,
+    var_name,
+    rule_id,
+    rule,
+    severity,
+    value,
+    reason,
+    confidence=None,
+):
+    assert finding["line"] == line
+    assert finding["file"] == str(file)
+    assert finding["var_name"] == var_name
+    assert finding["rule_id"] == rule_id
+    assert finding["rule"] == rule
+    assert finding["severity"] == severity
+    assert finding["value"] == value
+    assert finding["reason"] == reason
+
+    if confidence is None:
+        assert finding["confidence"] in SUPPORTED_CONFIDENCE
+    else:
+        assert finding["confidence"] == confidence
+
+    assert_entropy_metadata(finding)
+
+
+def assert_single_json_finding(data, **expected):
+    assert len(data) == 1
+    assert_json_finding(data[0], **expected)
 
 
 # Ensure JSON mode runs successfully and returns valid JSON
@@ -62,10 +122,12 @@ def test_cli_json_schema():
         "severity",
         "value",
         "reason",
+        "confidence",
     }
 
     for finding in data:
         assert required_keys.issubset(finding.keys())
+        assert "entropy" in finding or "entropy_score" in finding
 
 
 # Ensure JSON finding fields have the expected data types
@@ -87,6 +149,32 @@ def test_cli_json_field_types():
         assert isinstance(finding["severity"], str)
         assert isinstance(finding["value"], str)
         assert isinstance(finding["reason"], str)
+        assert isinstance(finding["confidence"], str)
+        assert_entropy_metadata(finding)
+
+
+# Ensure JSON confidence values use supported labels
+def test_cli_json_confidence_values_are_supported():
+    result = run_cli("test_dirs", "--json")
+
+    assert result.returncode == 0
+
+    data = parse_json_output(result)
+
+    assert len(data) > 0
+    assert all(finding["confidence"] in SUPPORTED_CONFIDENCE for finding in data)
+
+
+# Ensure JSON entropy values are numeric and non-negative
+def test_cli_json_entropy_values_are_numeric():
+    result = run_cli("test_dirs", "--json")
+
+    assert result.returncode == 0
+
+    data = parse_json_output(result)
+
+    assert len(data) > 0
+    assert all(get_entropy(finding) >= 0 for finding in data)
 
 
 # Ensure JSON mode does not include human-readable CLI text
@@ -99,6 +187,8 @@ def test_cli_json_output_is_pure_json():
     assert "--- Findings ---" not in result.stdout
     assert "Total findings" not in result.stdout
     assert "Reason:" not in result.stdout
+    assert "Confidence:" not in result.stdout
+    assert "Entropy:" not in result.stdout
 
     data = parse_json_output(result)
     assert isinstance(data, list)
@@ -115,7 +205,7 @@ def test_cli_text_output_contains_expected_sections():
     assert "Total findings" in result.stdout
 
 
-# Ensure normal CLI output contains finding details and reasons
+# Ensure normal CLI output contains finding details, confidence, and reasons
 def test_cli_text_output_contains_finding_details():
     result = run_cli("test_dirs")
 
@@ -123,6 +213,7 @@ def test_cli_text_output_contains_finding_details():
 
     assert "[HIGH]" in result.stdout
     assert "→" in result.stdout
+    assert "Confidence:" in result.stdout
     assert "Reason:" in result.stdout
 
 
@@ -139,6 +230,8 @@ def test_cli_json_severity_high_filter():
     assert all("var_name" in finding for finding in data)
     assert all("reason" in finding for finding in data)
     assert all("rule_id" in finding for finding in data)
+    assert all("confidence" in finding for finding in data)
+    assert all(get_entropy(finding) >= 0 for finding in data)
 
 
 # Ensure MEDIUM severity filtering works in JSON mode
@@ -154,6 +247,8 @@ def test_cli_json_severity_medium_filter():
     assert all("var_name" in finding for finding in data)
     assert all("reason" in finding for finding in data)
     assert all("rule_id" in finding for finding in data)
+    assert all("confidence" in finding for finding in data)
+    assert all(get_entropy(finding) >= 0 for finding in data)
 
 
 # Ensure HIGH severity filtering works in text mode
@@ -164,6 +259,7 @@ def test_cli_text_severity_high_filter():
 
     assert "[HIGH]" in result.stdout
     assert "[MEDIUM]" not in result.stdout
+    assert "Confidence:" in result.stdout
     assert "Reason:" in result.stdout
 
 
@@ -175,6 +271,7 @@ def test_cli_text_severity_medium_filter():
 
     assert "[MEDIUM]" in result.stdout
     assert "[HIGH]" not in result.stdout
+    assert "Confidence:" in result.stdout
     assert "Reason:" in result.stdout
 
 
@@ -191,6 +288,8 @@ def test_cli_json_and_severity_combined():
     assert all("var_name" in finding for finding in data)
     assert all("reason" in finding for finding in data)
     assert all("rule_id" in finding for finding in data)
+    assert all("confidence" in finding for finding in data)
+    assert all(get_entropy(finding) >= 0 for finding in data)
 
 
 # Ensure invalid severity values are rejected by argparse
@@ -219,6 +318,7 @@ def test_cli_no_findings_text_output(tmp_path):
 
     assert "No vulnerabilities found." in result.stdout
     assert "Reason:" not in result.stdout
+    assert "Confidence:" not in result.stdout
 
 
 # Ensure benign Python files produce an empty JSON list
@@ -246,18 +346,18 @@ def test_cli_detects_secret_in_temp_directory(tmp_path):
 
     data = parse_json_output(result)
 
-    assert data == [
-        {
-            "line": 1,
-            "file": str(vulnerable_file),
-            "var_name": "password",
-            "rule_id": "PASSWORD",
-            "rule": "Password",
-            "severity": "HIGH",
-            "value": "abcdef",
-            "reason": PASSWORD_REASON,
-        }
-    ]
+    assert_single_json_finding(
+        data,
+        line=1,
+        file=vulnerable_file,
+        var_name="password",
+        rule_id="PASSWORD",
+        rule="Password",
+        severity="HIGH",
+        value="abcdef",
+        reason=PASSWORD_REASON,
+        confidence="LOW",
+    )
 
 
 # Ensure JSON output can be parsed after severity filtering removes all findings
@@ -285,10 +385,11 @@ def test_cli_text_filter_with_no_matching_findings(tmp_path):
 
     assert "No vulnerabilities found." in result.stdout
     assert "Reason:" not in result.stdout
+    assert "Confidence:" not in result.stdout
 
 
 # Ensure JSON output preserves rule metadata for token findings
-def test_cli_json_token_finding_includes_rule_id_and_reason(tmp_path):
+def test_cli_json_token_finding_includes_rule_id_reason_and_confidence(tmp_path):
     token_file = tmp_path / "token_file.py"
     token_file.write_text('token = "abcdef"\n', encoding="utf-8")
 
@@ -298,18 +399,18 @@ def test_cli_json_token_finding_includes_rule_id_and_reason(tmp_path):
 
     data = parse_json_output(result)
 
-    assert data == [
-        {
-            "line": 1,
-            "file": str(token_file),
-            "var_name": "token",
-            "rule_id": "TOKEN",
-            "rule": "Token",
-            "severity": "MEDIUM",
-            "value": "abcdef",
-            "reason": TOKEN_REASON,
-        }
-    ]
+    assert_single_json_finding(
+        data,
+        line=1,
+        file=token_file,
+        var_name="token",
+        rule_id="TOKEN",
+        rule="Token",
+        severity="MEDIUM",
+        value="abcdef",
+        reason=TOKEN_REASON,
+        confidence="LOW",
+    )
 
 
 # Ensure JSON severity filtering preserves full finding schema
@@ -323,18 +424,18 @@ def test_cli_json_severity_filter_preserves_schema(tmp_path):
 
     data = parse_json_output(result)
 
-    assert data == [
-        {
-            "line": 1,
-            "file": str(password_file),
-            "var_name": "password",
-            "rule_id": "PASSWORD",
-            "rule": "Password",
-            "severity": "HIGH",
-            "value": "abcdef",
-            "reason": PASSWORD_REASON,
-        }
-    ]
+    assert_single_json_finding(
+        data,
+        line=1,
+        file=password_file,
+        var_name="password",
+        rule_id="PASSWORD",
+        rule="Password",
+        severity="HIGH",
+        value="abcdef",
+        reason=PASSWORD_REASON,
+        confidence="LOW",
+    )
 
 
 # Ensure normal text output shows original values when --redact is not used
@@ -349,6 +450,7 @@ def test_cli_text_output_is_unredacted_by_default(tmp_path):
     assert "abcdef" in result.stdout
     assert "a****f" not in result.stdout
     assert "[REDACTED]" not in result.stdout
+    assert "Confidence:" in result.stdout
 
 
 # Ensure text output redacts detected values when --redact is used
@@ -362,6 +464,7 @@ def test_cli_text_redact_masks_secret_value(tmp_path):
 
     assert "a****f" in result.stdout
     assert "abcdef" not in result.stdout
+    assert "Confidence:" in result.stdout
     assert "Reason:" in result.stdout
     assert "Password" in result.stdout
 
@@ -377,18 +480,18 @@ def test_cli_json_output_is_unredacted_by_default(tmp_path):
 
     data = parse_json_output(result)
 
-    assert data == [
-        {
-            "line": 1,
-            "file": str(password_file),
-            "var_name": "password",
-            "rule_id": "PASSWORD",
-            "rule": "Password",
-            "severity": "HIGH",
-            "value": "abcdef",
-            "reason": PASSWORD_REASON,
-        }
-    ]
+    assert_single_json_finding(
+        data,
+        line=1,
+        file=password_file,
+        var_name="password",
+        rule_id="PASSWORD",
+        rule="Password",
+        severity="HIGH",
+        value="abcdef",
+        reason=PASSWORD_REASON,
+        confidence="LOW",
+    )
 
 
 # Ensure JSON output redacts values when --redact is used
@@ -402,18 +505,18 @@ def test_cli_json_redact_masks_secret_value(tmp_path):
 
     data = parse_json_output(result)
 
-    assert data == [
-        {
-            "line": 1,
-            "file": str(password_file),
-            "var_name": "password",
-            "rule_id": "PASSWORD",
-            "rule": "Password",
-            "severity": "HIGH",
-            "value": "a****f",
-            "reason": PASSWORD_REASON,
-        }
-    ]
+    assert_single_json_finding(
+        data,
+        line=1,
+        file=password_file,
+        var_name="password",
+        rule_id="PASSWORD",
+        rule="Password",
+        severity="HIGH",
+        value="a****f",
+        reason=PASSWORD_REASON,
+        confidence="LOW",
+    )
 
 
 # Ensure JSON redaction keeps output machine-readable and pure JSON
@@ -429,11 +532,14 @@ def test_cli_json_redact_output_is_pure_json(tmp_path):
     assert "--- Findings ---" not in result.stdout
     assert "Total findings" not in result.stdout
     assert "Reason:" not in result.stdout
+    assert "Confidence:" not in result.stdout
 
     data = parse_json_output(result)
 
     assert isinstance(data, list)
     assert data[0]["value"] == "a****f"
+    assert data[0]["confidence"] == "LOW"
+    assert_entropy_metadata(data[0])
 
 
 # Ensure --json, --severity, and --redact work together
@@ -451,18 +557,18 @@ def test_cli_json_severity_and_redact_combined(tmp_path):
 
     data = parse_json_output(result)
 
-    assert data == [
-        {
-            "line": 1,
-            "file": str(findings_file),
-            "var_name": "password",
-            "rule_id": "PASSWORD",
-            "rule": "Password",
-            "severity": "HIGH",
-            "value": "a****f",
-            "reason": PASSWORD_REASON,
-        }
-    ]
+    assert_single_json_finding(
+        data,
+        line=1,
+        file=findings_file,
+        var_name="password",
+        rule_id="PASSWORD",
+        rule="Password",
+        severity="HIGH",
+        value="a****f",
+        reason=PASSWORD_REASON,
+        confidence="LOW",
+    )
 
 
 # Ensure text severity filtering and redaction work together
@@ -483,6 +589,7 @@ def test_cli_text_severity_and_redact_combined(tmp_path):
     assert "a****f" in result.stdout
     assert "abcdef" not in result.stdout
     assert "qwerty123" not in result.stdout
+    assert "Confidence:" in result.stdout
 
 
 # Ensure short detected values are fully redacted
@@ -496,18 +603,18 @@ def test_cli_json_redact_short_boundary_value(tmp_path):
 
     data = parse_json_output(result)
 
-    assert data == [
-        {
-            "line": 1,
-            "file": str(password_file),
-            "var_name": "password",
-            "rule_id": "PASSWORD",
-            "rule": "Password",
-            "severity": "HIGH",
-            "value": "[REDACTED]",
-            "reason": PASSWORD_REASON,
-        }
-    ]
+    assert_single_json_finding(
+        data,
+        line=1,
+        file=password_file,
+        var_name="password",
+        rule_id="PASSWORD",
+        rule="Password",
+        severity="HIGH",
+        value="[REDACTED]",
+        reason=PASSWORD_REASON,
+        confidence="LOW",
+    )
 
 
 # Ensure longer detected values preserve only limited prefix/suffix context
@@ -521,18 +628,18 @@ def test_cli_json_redact_long_value(tmp_path):
 
     data = parse_json_output(result)
 
-    assert data == [
-        {
-            "line": 1,
-            "file": str(password_file),
-            "var_name": "password",
-            "rule_id": "PASSWORD",
-            "rule": "Password",
-            "severity": "HIGH",
-            "value": "ab***************()",
-            "reason": PASSWORD_REASON,
-        }
-    ]
+    assert_single_json_finding(
+        data,
+        line=1,
+        file=password_file,
+        var_name="password",
+        rule_id="PASSWORD",
+        rule="Password",
+        severity="HIGH",
+        value="ab***************()",
+        reason=PASSWORD_REASON,
+        confidence="HIGH",
+    )
 
 
 # Ensure AWS access key values are redacted in JSON output
@@ -549,18 +656,62 @@ def test_cli_json_redact_aws_access_key(tmp_path):
 
     data = parse_json_output(result)
 
-    assert data == [
-        {
-            "line": 1,
-            "file": str(aws_file),
-            "var_name": "random_var",
-            "rule_id": "AWS_ACCESS_KEY",
-            "rule": "AWS Access Key",
-            "severity": "HIGH",
-            "value": "AK****************89",
-            "reason": AWS_REASON,
-        }
-    ]
+    assert_single_json_finding(
+        data,
+        line=1,
+        file=aws_file,
+        var_name="random_var",
+        rule_id="AWS_ACCESS_KEY",
+        rule="AWS Access Key",
+        severity="HIGH",
+        value="AK****************89",
+        reason=AWS_REASON,
+        confidence="HIGH",
+    )
+
+
+# Ensure AWS access key confidence is HIGH in JSON output
+def test_cli_json_aws_access_key_confidence_is_high(tmp_path):
+    aws_file = tmp_path / "aws_file.py"
+    aws_file.write_text(
+        'random_var = "AKIAEXAMPLE123456789"\n',
+        encoding="utf-8",
+    )
+
+    result = run_cli(str(tmp_path), "--json")
+
+    assert result.returncode == 0
+
+    data = parse_json_output(result)
+
+    assert data[0]["rule_id"] == "AWS_ACCESS_KEY"
+    assert data[0]["confidence"] == "HIGH"
+    assert_entropy_metadata(data[0])
+
+
+# Ensure high-randomness token values are HIGH confidence in JSON output
+def test_cli_json_high_confidence_token(tmp_path):
+    token_file = tmp_path / "token_file.py"
+    token_file.write_text('token = "abc1234567890j"\n', encoding="utf-8")
+
+    result = run_cli(str(tmp_path), "--json")
+
+    assert result.returncode == 0
+
+    data = parse_json_output(result)
+
+    assert_single_json_finding(
+        data,
+        line=1,
+        file=token_file,
+        var_name="token",
+        rule_id="TOKEN",
+        rule="Token",
+        severity="MEDIUM",
+        value="abc1234567890j",
+        reason=TOKEN_REASON,
+        confidence="HIGH",
+    )
 
 
 # Ensure no-finding JSON output remains an empty list even with --redact
@@ -589,3 +740,4 @@ def test_cli_no_findings_text_with_redact(tmp_path):
     assert "No vulnerabilities found." in result.stdout
     assert "[REDACTED]" not in result.stdout
     assert "Reason:" not in result.stdout
+    assert "Confidence:" not in result.stdout
