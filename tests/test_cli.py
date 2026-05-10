@@ -741,3 +741,382 @@ def test_cli_no_findings_text_with_redact(tmp_path):
     assert "[REDACTED]" not in result.stdout
     assert "Reason:" not in result.stdout
     assert "Confidence:" not in result.stdout
+
+
+# Ensure LOW confidence filtering works in JSON mode
+def test_cli_json_confidence_low_filter(tmp_path):
+    findings_file = tmp_path / "findings.py"
+    findings_file.write_text(
+        'password = "abcdef"\n'
+        'token = "xyzttttggfdddf"\n'
+        'api_token = "abc1234567890j"\n',
+        encoding="utf-8",
+    )
+
+    result = run_cli(str(tmp_path), "--json", "--confidence", "LOW")
+
+    assert result.returncode == 0
+
+    data = parse_json_output(result)
+
+    assert_single_json_finding(
+        data,
+        line=1,
+        file=findings_file,
+        var_name="password",
+        rule_id="PASSWORD",
+        rule="Password",
+        severity="HIGH",
+        value="abcdef",
+        reason=PASSWORD_REASON,
+        confidence="LOW",
+    )
+
+
+# Ensure MEDIUM confidence filtering works in JSON mode
+def test_cli_json_confidence_medium_filter(tmp_path):
+    findings_file = tmp_path / "findings.py"
+    findings_file.write_text(
+        'password = "abcdef"\n'
+        'token = "xyzttttggfdddf"\n'
+        'api_token = "abc1234567890j"\n',
+        encoding="utf-8",
+    )
+
+    result = run_cli(str(tmp_path), "--json", "--confidence", "MEDIUM")
+
+    assert result.returncode == 0
+
+    data = parse_json_output(result)
+
+    assert_single_json_finding(
+        data,
+        line=2,
+        file=findings_file,
+        var_name="token",
+        rule_id="TOKEN",
+        rule="Token",
+        severity="MEDIUM",
+        value="xyzttttggfdddf",
+        reason=TOKEN_REASON,
+        confidence="MEDIUM",
+    )
+
+
+# Ensure HIGH confidence filtering works in JSON mode
+def test_cli_json_confidence_high_filter(tmp_path):
+    findings_file = tmp_path / "findings.py"
+    findings_file.write_text(
+        'password = "abcdef"\n'
+        'token = "xyzttttggfdddf"\n'
+        'api_token = "abc1234567890j"\n',
+        encoding="utf-8",
+    )
+
+    result = run_cli(str(tmp_path), "--json", "--confidence", "HIGH")
+
+    assert result.returncode == 0
+
+    data = parse_json_output(result)
+
+    assert_single_json_finding(
+        data,
+        line=3,
+        file=findings_file,
+        var_name="api_token",
+        rule_id="TOKEN",
+        rule="Token",
+        severity="MEDIUM",
+        value="abc1234567890j",
+        reason=TOKEN_REASON,
+        confidence="HIGH",
+    )
+
+
+# Ensure confidence filtering keeps only matching confidence values in JSON
+def test_cli_json_confidence_filter_keeps_only_matching_confidence(tmp_path):
+    findings_file = tmp_path / "findings.py"
+    findings_file.write_text(
+        'password = "abcdef"\n'
+        'token = "xyzttttggfdddf"\n'
+        'api_token = "abc1234567890j"\n',
+        encoding="utf-8",
+    )
+
+    result = run_cli(str(tmp_path), "--json", "--confidence", "HIGH")
+
+    assert result.returncode == 0
+
+    data = parse_json_output(result)
+
+    assert len(data) > 0
+    assert all(finding["confidence"] == "HIGH" for finding in data)
+    assert all(finding["confidence"] != "LOW" for finding in data)
+    assert all(finding["confidence"] != "MEDIUM" for finding in data)
+
+
+# Ensure LOW confidence filtering works in text mode
+def test_cli_text_confidence_low_filter(tmp_path):
+    findings_file = tmp_path / "findings.py"
+    findings_file.write_text(
+        'password = "abcdef"\n'
+        'token = "xyzttttggfdddf"\n'
+        'api_token = "abc1234567890j"\n',
+        encoding="utf-8",
+    )
+
+    result = run_cli(str(tmp_path), "--confidence", "LOW")
+
+    assert result.returncode == 0
+
+    assert "abcdef" in result.stdout
+    assert "xyzttttggfdddf" not in result.stdout
+    assert "abc1234567890j" not in result.stdout
+    assert "Confidence:" in result.stdout
+    assert "Reason:" in result.stdout
+
+
+# Ensure MEDIUM confidence filtering works in text mode
+def test_cli_text_confidence_medium_filter(tmp_path):
+    findings_file = tmp_path / "findings.py"
+    findings_file.write_text(
+        'password = "abcdef"\n'
+        'token = "xyzttttggfdddf"\n'
+        'api_token = "abc1234567890j"\n',
+        encoding="utf-8",
+    )
+
+    result = run_cli(str(tmp_path), "--confidence", "MEDIUM")
+
+    assert result.returncode == 0
+
+    assert "xyzttttggfdddf" in result.stdout
+    assert "abcdef" not in result.stdout
+    assert "abc1234567890j" not in result.stdout
+    assert "Confidence:" in result.stdout
+    assert "Reason:" in result.stdout
+
+
+# Ensure HIGH confidence filtering works in text mode
+def test_cli_text_confidence_high_filter(tmp_path):
+    findings_file = tmp_path / "findings.py"
+    findings_file.write_text(
+        'password = "abcdef"\n'
+        'token = "xyzttttggfdddf"\n'
+        'api_token = "abc1234567890j"\n',
+        encoding="utf-8",
+    )
+
+    result = run_cli(str(tmp_path), "--confidence", "HIGH")
+
+    assert result.returncode == 0
+
+    assert "abc1234567890j" in result.stdout
+    assert "abcdef" not in result.stdout
+    assert "xyzttttggfdddf" not in result.stdout
+    assert "Confidence:" in result.stdout
+    assert "Reason:" in result.stdout
+
+
+# Ensure severity and confidence filtering work together in JSON mode
+def test_cli_json_severity_and_confidence_combined(tmp_path):
+    findings_file = tmp_path / "findings.py"
+    findings_file.write_text(
+        'password = "abcdef"\n'
+        'token = "abc1234567890j"\n'
+        'random_var = "AKIAEXAMPLE123456789"\n',
+        encoding="utf-8",
+    )
+
+    result = run_cli(
+        str(tmp_path),
+        "--json",
+        "--severity",
+        "HIGH",
+        "--confidence",
+        "HIGH",
+    )
+
+    assert result.returncode == 0
+
+    data = parse_json_output(result)
+
+    assert_single_json_finding(
+        data,
+        line=3,
+        file=findings_file,
+        var_name="random_var",
+        rule_id="AWS_ACCESS_KEY",
+        rule="AWS Access Key",
+        severity="HIGH",
+        value="AKIAEXAMPLE123456789",
+        reason=AWS_REASON,
+        confidence="HIGH",
+    )
+
+
+# Ensure severity and confidence filtering can return no matches in JSON mode
+def test_cli_json_severity_and_confidence_no_matches(tmp_path):
+    findings_file = tmp_path / "findings.py"
+    findings_file.write_text(
+        'password = "abcdef"\n'
+        'token = "abc1234567890j"\n',
+        encoding="utf-8",
+    )
+
+    result = run_cli(
+        str(tmp_path),
+        "--json",
+        "--severity",
+        "HIGH",
+        "--confidence",
+        "HIGH",
+    )
+
+    assert result.returncode == 0
+
+    data = parse_json_output(result)
+
+    assert data == []
+
+
+# Ensure severity and confidence filtering work together in text mode
+def test_cli_text_severity_and_confidence_combined(tmp_path):
+    findings_file = tmp_path / "findings.py"
+    findings_file.write_text(
+        'password = "abcdef"\n'
+        'token = "abc1234567890j"\n'
+        'random_var = "AKIAEXAMPLE123456789"\n',
+        encoding="utf-8",
+    )
+
+    result = run_cli(
+        str(tmp_path),
+        "--severity",
+        "HIGH",
+        "--confidence",
+        "HIGH",
+    )
+
+    assert result.returncode == 0
+
+    assert "AWS Access Key" in result.stdout
+    assert "AKIAEXAMPLE123456789" in result.stdout
+    assert "abcdef" not in result.stdout
+    assert "abc1234567890j" not in result.stdout
+    assert "Confidence:" in result.stdout
+    assert "Reason:" in result.stdout
+
+
+# Ensure confidence filtering works with redaction in JSON mode
+def test_cli_json_confidence_and_redact_combined(tmp_path):
+    findings_file = tmp_path / "findings.py"
+    findings_file.write_text(
+        'password = "abcdef"\n'
+        'api_token = "abc1234567890j"\n',
+        encoding="utf-8",
+    )
+
+    result = run_cli(str(tmp_path), "--json", "--confidence", "HIGH", "--redact")
+
+    assert result.returncode == 0
+
+    data = parse_json_output(result)
+
+    assert_single_json_finding(
+        data,
+        line=2,
+        file=findings_file,
+        var_name="api_token",
+        rule_id="TOKEN",
+        rule="Token",
+        severity="MEDIUM",
+        value="ab***********0j",
+        reason=TOKEN_REASON,
+        confidence="HIGH",
+    )
+
+
+# Ensure confidence filtering works with redaction in JSON mode
+def test_cli_json_confidence_and_redact_combined(tmp_path):
+    findings_file = tmp_path / "findings.py"
+    findings_file.write_text(
+        'password = "abcdef"\n'
+        'api_token = "abc1234567890j"\n',
+        encoding="utf-8",
+    )
+
+    result = run_cli(str(tmp_path), "--json", "--confidence", "HIGH", "--redact")
+
+    assert result.returncode == 0
+
+    data = parse_json_output(result)
+
+    assert_single_json_finding(
+        data,
+        line=2,
+        file=findings_file,
+        var_name="api_token",
+        rule_id="TOKEN",
+        rule="Token",
+        severity="MEDIUM",
+        value="ab**********0j",
+        reason=TOKEN_REASON,
+        confidence="HIGH",
+    )
+
+
+# Ensure confidence filtering works with redaction in text mode
+def test_cli_text_confidence_and_redact_combined(tmp_path):
+    findings_file = tmp_path / "findings.py"
+    findings_file.write_text(
+        'password = "abcdef"\n'
+        'api_token = "abc1234567890j"\n',
+        encoding="utf-8",
+    )
+
+    result = run_cli(str(tmp_path), "--confidence", "HIGH", "--redact")
+
+    assert result.returncode == 0
+
+    assert "ab**********0j" in result.stdout
+    assert "abc1234567890j" not in result.stdout
+    assert "abcdef" not in result.stdout
+    assert "Confidence:" in result.stdout
+    assert "Reason:" in result.stdout
+
+
+# Ensure invalid confidence values are rejected by argparse
+def test_cli_invalid_confidence_fails():
+    result = run_cli("test_dirs", "--confidence", "VERY_HIGH")
+
+    assert result.returncode != 0
+    assert "invalid choice" in result.stderr
+
+
+# Ensure confidence filter with no matching findings returns empty JSON
+def test_cli_json_confidence_filter_with_no_matching_findings(tmp_path):
+    low_file = tmp_path / "low.py"
+    low_file.write_text('password = "abcdef"\n', encoding="utf-8")
+
+    result = run_cli(str(tmp_path), "--json", "--confidence", "HIGH")
+
+    assert result.returncode == 0
+
+    data = parse_json_output(result)
+
+    assert data == []
+
+
+# Ensure confidence filter with no matching findings prints no findings in text mode
+def test_cli_text_confidence_filter_with_no_matching_findings(tmp_path):
+    low_file = tmp_path / "low.py"
+    low_file.write_text('password = "abcdef"\n', encoding="utf-8")
+
+    result = run_cli(str(tmp_path), "--confidence", "HIGH")
+
+    assert result.returncode == 0
+
+    assert "No vulnerabilities found." in result.stdout
+    assert "Reason:" not in result.stdout
+    assert "Confidence:" not in result.stdout

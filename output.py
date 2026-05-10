@@ -17,7 +17,7 @@ def redact_value(value):
     return f"{value[:2]}{'*' * (len(value) - 4)}{value[-2:]}"
 
 
-def filter_results(results, chosen_severity):
+def filter_results(results, chosen_severity, chosen_confidence):
     """
     Filter findings by severity.
 
@@ -31,7 +31,7 @@ def filter_results(results, chosen_severity):
     filtered_findings = []
 
     for finding in results:
-        if finding.severity == chosen_severity or chosen_severity is None:
+        if (finding.severity == chosen_severity or chosen_severity is None) and (finding.confidence == chosen_confidence or chosen_confidence is None):
             filtered_findings.append(finding)
 
     return filtered_findings

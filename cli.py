@@ -24,6 +24,13 @@ parser.add_argument(
     help="Only show findings matching the selected severity",
 )
 
+# Limit displayed findings to a selected confidence level.
+parser.add_argument(
+    "--confidence",
+    choices=["LOW", "MEDIUM", "HIGH"],
+    help="Only show findings matching the selected confidence level",
+)
+
 # Mask detected secret values in text or JSON output.
 parser.add_argument(
     "--redact",
@@ -38,3 +45,4 @@ input_path = args.path
 use_json = args.json
 redact_secrets = args.redact
 chosen_severity = args.severity
+chosen_confidence = args.confidence
