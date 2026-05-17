@@ -2,7 +2,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from detectors.find_secrets import detect_ast_secrets
-
+from ignore import filter_ignored_files, load_ignore_patterns
 
 def check_path(input_path):
     """
@@ -29,13 +29,14 @@ def list_python_files(path):
     """
     Recursively find Python files within a directory.
 
-    Args:
-        path (Path): Root directory to search.
-
-    Returns:
-        list[Path]: Python files discovered under the root directory.
+    Applies .sentinelscanignore patterns if the file exists in the scan root
+    or one of its parent directories.
     """
-    return list(path.rglob("*.py"))
+    files = list(path.rglob("*.py"))
+
+    ignore_patterns, ignore_root = load_ignore_patterns(path)
+
+    return filter_ignored_files(files, ignore_root, ignore_patterns)
 
 
 def scan(files):
@@ -50,28 +51,20 @@ def scan(files):
 
     Returns:
         list[Finding]: Findings detected across all scanned files.
-
-    Behavior:
-        - Processes files in sorted order for deterministic output
-        - Ignores encoding errors to avoid scan interruptions
-        - Supports multiple findings per file
     """
     if not files:
-        print("No Python files found.")
         return []
 
     files = sorted(files)
     findings = []
 
     for file in files:
-        # Read file content safely before passing it to the AST detector.
         with open(file, "r", encoding="utf-8", errors="ignore") as f:
             content = f.read()
 
         ast_results = detect_ast_secrets(content)
 
         for finding in ast_results:
-            # Attach file context at the scanner layer, where file paths are known.
             finding_with_file = replace(finding, file_path=str(file))
             findings.append(finding_with_file)
 

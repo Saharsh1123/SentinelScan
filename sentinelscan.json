@@ -1,0 +1,6 @@
+{
+  "min_confidence": "MEDIUM",
+  "min_severity": "HIGH",
+  "redact": true,
+  "ignored_rules": ["SECRET"]
+}

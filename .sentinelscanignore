@@ -1,0 +1,11 @@
+# Ignore local environment
+venv/
+
+# Ignore Python cache directories
+__pycache__/
+
+# Ignore fixture directory
+test_dirs/
+
+# Ignore minified Python files
+*.min.py
