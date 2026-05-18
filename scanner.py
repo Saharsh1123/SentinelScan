@@ -3,6 +3,7 @@ from pathlib import Path
 
 from detectors.find_secrets import detect_ast_secrets
 from ignore import filter_ignored_files, load_ignore_patterns
+from inline_ignore import line_has_inline_ignore
 
 def check_path(input_path):
     """
@@ -61,10 +62,14 @@ def scan(files):
     for file in files:
         with open(file, "r", encoding="utf-8", errors="ignore") as f:
             content = f.read()
+            lines = content.splitlines()
 
         ast_results = detect_ast_secrets(content)
 
         for finding in ast_results:
+            line = lines[finding.line_number - 1]
+            if line_has_inline_ignore(line):
+                continue
             finding_with_file = replace(finding, file_path=str(file))
             findings.append(finding_with_file)
 

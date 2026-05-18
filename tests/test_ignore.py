@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from ignore import (
     filter_ignored_files,
     find_ignore_file,
