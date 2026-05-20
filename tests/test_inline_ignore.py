@@ -1,10 +1,8 @@
-import json
-import subprocess
-import sys
+from types import SimpleNamespace
 
 import pytest
 
-from scanner import line_has_inline_ignore, scan
+from scanner import finding_has_inline_ignore, scan
 
 
 PASSWORD_REASON = (
@@ -12,36 +10,12 @@ PASSWORD_REASON = (
 )
 TOKEN_REASON = "variable name matched token pattern and value met minimum length"
 
-SUPPORTED_CONFIDENCE = {"LOW", "MEDIUM", "HIGH"}
 
-
-def run_cli(*args):
+def make_finding(rule_id="PASSWORD"):
     """
-    Run the SentinelScan CLI with the current Python interpreter.
+    Create a minimal finding-like object for inline-ignore helper tests.
     """
-    return subprocess.run(
-        [sys.executable, "main.py", *map(str, args)],
-        capture_output=True,
-        text=True,
-    )
-
-
-def assert_success(result):
-    """
-    Assert that a CLI command succeeded and show useful output if it did not.
-    """
-    assert result.returncode == 0, (
-        f"Expected CLI command to succeed.\n"
-        f"STDOUT:\n{result.stdout}\n"
-        f"STDERR:\n{result.stderr}"
-    )
-
-
-def parse_json_output(result):
-    """
-    Parse CLI stdout as JSON.
-    """
-    return json.loads(result.stdout)
+    return SimpleNamespace(rule_id=rule_id)
 
 
 def write_python_file(root_path, relative_path, content):
@@ -54,72 +28,8 @@ def write_python_file(root_path, relative_path, content):
     return file_path
 
 
-def get_entropy(finding):
-    """
-    Return entropy metadata from a JSON finding.
-    """
-    if "entropy" in finding:
-        return finding["entropy"]
-
-    if "entropy_score" in finding:
-        return finding["entropy_score"]
-
-    raise AssertionError("JSON finding is missing entropy metadata")
-
-
-def assert_entropy_metadata(finding):
-    """
-    Assert that entropy metadata exists and is numeric.
-    """
-    entropy = get_entropy(finding)
-
-    assert isinstance(entropy, (int, float))
-    assert entropy >= 0
-
-
-def assert_json_finding(
-    finding,
-    *,
-    line,
-    file,
-    var_name,
-    rule_id,
-    rule,
-    severity,
-    value,
-    reason,
-    confidence=None,
-):
-    """
-    Assert stable JSON finding fields while allowing extra future fields.
-    """
-    assert finding["line"] == line
-    assert finding["file"] == str(file)
-    assert finding["var_name"] == var_name
-    assert finding["rule_id"] == rule_id
-    assert finding["rule"] == rule
-    assert finding["severity"] == severity
-    assert finding["value"] == value
-    assert finding["reason"] == reason
-
-    if confidence is None:
-        assert finding["confidence"] in SUPPORTED_CONFIDENCE
-    else:
-        assert finding["confidence"] == confidence
-
-    assert_entropy_metadata(finding)
-
-
-def assert_single_json_finding(data, **expected):
-    """
-    Assert that JSON output contains exactly one expected finding.
-    """
-    assert len(data) == 1
-    assert_json_finding(data[0], **expected)
-
-
 # -------------------------
-# Inline ignore marker unit tests
+# Generic inline ignore helper behavior
 # -------------------------
 
 
@@ -128,12 +38,13 @@ def assert_single_json_finding(data, **expected):
     [
         'password = "abcdef"  # sentinelscan: ignore',
         'password = "abcdef" # sentinelscan: ignore',
-        'password = "abcdef"  # sentinelscan: ignore because this is fake',
         "    token = 'abcdef'  # sentinelscan: ignore",
     ],
 )
-def test_line_has_inline_ignore_returns_true_for_valid_marker(line):
-    assert line_has_inline_ignore(line) is True
+def test_finding_has_inline_ignore_returns_true_for_generic_marker(line):
+    finding = make_finding("PASSWORD")
+
+    assert finding_has_inline_ignore(line, finding) is True
 
 
 @pytest.mark.parametrize(
@@ -146,18 +57,72 @@ def test_line_has_inline_ignore_returns_true_for_valid_marker(line):
         'password = "abcdef"  # ignore',
     ],
 )
-def test_line_has_inline_ignore_returns_false_without_valid_marker(line):
-    assert line_has_inline_ignore(line) is False
+def test_finding_has_inline_ignore_returns_false_without_valid_marker(line):
+    finding = make_finding("PASSWORD")
+
+    assert finding_has_inline_ignore(line, finding) is False
 
 
-def test_line_has_inline_ignore_does_not_match_marker_inside_string_literal():
+def test_finding_has_inline_ignore_does_not_match_marker_inside_string_literal():
     line = 'note = "sentinelscan: ignore"'
+    finding = make_finding("PASSWORD")
 
-    assert line_has_inline_ignore(line) is False
+    assert finding_has_inline_ignore(line, finding) is False
 
 
 # -------------------------
-# Scanner-level inline ignore behavior
+# Rule-specific inline ignore helper behavior
+# -------------------------
+
+
+def test_rule_specific_inline_ignore_matches_same_rule_id():
+    line = 'api_key = "AKIAEXAMPLE123456789"  # sentinelscan: ignore AWS_ACCESS_KEY'
+    finding = make_finding("AWS_ACCESS_KEY")
+
+    assert finding_has_inline_ignore(line, finding) is True
+
+
+def test_rule_specific_inline_ignore_does_not_match_different_rule_id():
+    line = 'api_key = "AKIAEXAMPLE123456789"  # sentinelscan: ignore AWS_ACCESS_KEY'
+    finding = make_finding("API_KEY")
+
+    assert finding_has_inline_ignore(line, finding) is False
+
+
+def test_rule_specific_inline_ignore_supports_multiple_rule_ids():
+    line = (
+        'api_key = "AKIAEXAMPLE123456789"  '
+        '# sentinelscan: ignore AWS_ACCESS_KEY API_KEY'
+    )
+
+    assert finding_has_inline_ignore(line, make_finding("AWS_ACCESS_KEY")) is True
+    assert finding_has_inline_ignore(line, make_finding("API_KEY")) is True
+    assert finding_has_inline_ignore(line, make_finding("PASSWORD")) is False
+
+
+def test_rule_specific_inline_ignore_with_unknown_rule_id_does_not_suppress():
+    line = 'password = "abcdef"  # sentinelscan: ignore FAKE_RULE'
+    finding = make_finding("PASSWORD")
+
+    assert finding_has_inline_ignore(line, finding) is False
+
+
+def test_rule_specific_inline_ignore_inside_string_literal_does_not_suppress():
+    line = 'password = "sentinelscan: ignore PASSWORD"'
+    finding = make_finding("PASSWORD")
+
+    assert finding_has_inline_ignore(line, finding) is False
+
+
+def test_rule_specific_inline_ignore_is_case_sensitive_for_rule_ids():
+    line = 'password = "abcdef"  # sentinelscan: ignore password'
+    finding = make_finding("PASSWORD")
+
+    assert finding_has_inline_ignore(line, finding) is False
+
+
+# -------------------------
+# Generic scanner-level inline ignore behavior
 # -------------------------
 
 
@@ -282,3 +247,104 @@ def test_scan_inline_ignore_in_string_literal_does_not_suppress_finding(tmp_path
     assert len(result) == 1
     assert result[0].rule_id == "PASSWORD"
     assert result[0].value == "sentinelscan: ignore"
+
+
+# -------------------------
+# Rule-specific scanner-level inline ignore behavior
+# -------------------------
+
+
+def test_scan_rule_specific_ignore_suppresses_only_matching_rule(tmp_path):
+    findings_file = write_python_file(
+        tmp_path,
+        "findings.py",
+        'api_key = "AKIAEXAMPLE123456789"  # sentinelscan: ignore AWS_ACCESS_KEY\n',
+    )
+
+    result = scan([findings_file])
+
+    assert len(result) == 1
+    assert result[0].rule_id == "API_KEY"
+    assert result[0].rule_name == "API Key"
+    assert result[0].value == "AKIAEXAMPLE123456789"
+
+
+def test_scan_rule_specific_ignore_can_suppress_api_key_but_keep_aws_match(tmp_path):
+    findings_file = write_python_file(
+        tmp_path,
+        "findings.py",
+        'api_key = "AKIAEXAMPLE123456789"  # sentinelscan: ignore API_KEY\n',
+    )
+
+    result = scan([findings_file])
+
+    assert len(result) == 1
+    assert result[0].rule_id == "AWS_ACCESS_KEY"
+    assert result[0].rule_name == "AWS Access Key"
+    assert result[0].value == "AKIAEXAMPLE123456789"
+
+
+def test_scan_rule_specific_ignore_suppresses_multiple_listed_rules(tmp_path):
+    findings_file = write_python_file(
+        tmp_path,
+        "findings.py",
+        'api_key = "AKIAEXAMPLE123456789"  '
+        '# sentinelscan: ignore AWS_ACCESS_KEY API_KEY\n',
+    )
+
+    result = scan([findings_file])
+
+    assert result == []
+
+
+def test_scan_unknown_rule_specific_ignore_does_not_suppress_finding(tmp_path):
+    findings_file = write_python_file(
+        tmp_path,
+        "findings.py",
+        'password = "abcdef"  # sentinelscan: ignore FAKE_RULE\n',
+    )
+
+    result = scan([findings_file])
+
+    assert len(result) == 1
+    assert result[0].rule_id == "PASSWORD"
+    assert result[0].value == "abcdef"
+
+
+def test_scan_rule_specific_ignore_only_affects_same_line(tmp_path):
+    findings_file = write_python_file(
+        tmp_path,
+        "findings.py",
+        'password = "abcdef"  # sentinelscan: ignore PASSWORD\n'
+        'token = "abc1234567890j"\n',
+    )
+
+    result = scan([findings_file])
+
+    assert len(result) == 1
+    assert result[0].line_number == 2
+    assert result[0].rule_id == "TOKEN"
+    assert result[0].value == "abc1234567890j"
+
+
+def test_scan_rule_specific_ignore_preserves_remaining_finding_metadata(tmp_path):
+    findings_file = write_python_file(
+        tmp_path,
+        "findings.py",
+        'api_key = "AKIAEXAMPLE123456789"  # sentinelscan: ignore AWS_ACCESS_KEY\n',
+    )
+
+    result = scan([findings_file])
+
+    assert len(result) == 1
+
+    finding = result[0]
+
+    assert finding.file_path == str(findings_file)
+    assert finding.line_number == 1
+    assert finding.var_name == "api_key"
+    assert finding.rule_id == "API_KEY"
+    assert finding.rule_name == "API Key"
+    assert finding.severity == "HIGH"
+    assert finding.confidence == "HIGH"
+    assert finding.entropy >= 0
