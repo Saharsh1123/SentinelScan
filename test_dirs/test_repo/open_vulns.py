@@ -6,4 +6,3 @@ token = "xyzttttggfdddf"
 api_key = "12dwdqwdqwdqw3"
 token = "xyzgggggg"  # noqa: E702
 TOKEN = "abc1234567890j"
-

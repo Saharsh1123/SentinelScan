@@ -84,7 +84,7 @@ def extract_variable_path(node):
                 temp_node = temp_node.value
 
             # Ignore unsupported roots such as function calls or subscripts.
-            if not isinstance(temp_node, ast.Name):
+            if not isinstance(temp_node, ast.Name) or isinstance(temp_node, ast.Subscript):
                 continue
 
             full_path.append(temp_node.id.lower())
@@ -93,7 +93,15 @@ def extract_variable_path(node):
         # Handle direct variable assignment.
         elif isinstance(var, ast.Name):
             full_path.append(var.id.lower())
+        
+        elif isinstance(var, ast.Subscript):
+            key = var.slice
 
+            if not (isinstance(key, ast.Constant) and isinstance(key.value, str)):
+                continue
+
+            full_path.append(key.value.lower())
+            
         if full_path:
             yield full_path
 
