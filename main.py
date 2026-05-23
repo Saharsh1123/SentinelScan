@@ -12,7 +12,7 @@ from output import filter_results, output
 if __name__ == "__main__":
     try:
         args = return_args()
-        
+
         # Export parsed values for the application entry point.
         input_path = args.path
         use_json = args.json

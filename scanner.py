@@ -40,6 +40,25 @@ def list_python_files(path):
     return filter_ignored_files(files, ignore_root, ignore_patterns)
 
 
+def scan_file(file):
+    result = []
+
+    with open(file, "r", encoding="utf-8", errors="ignore") as f:
+            content = f.read()
+            lines = content.splitlines()
+
+            ast_results = detect_ast_secrets(content)
+
+            for finding in ast_results:
+                line = lines[finding.line_number - 1]
+                if finding_has_inline_ignore(line, finding):
+                    continue
+                finding_with_file = replace(finding, file_path=str(file))
+                result.append(finding_with_file)
+
+    return result
+
+
 def scan(files):
     """
     Scan Python files for hardcoded secrets.
@@ -56,24 +75,15 @@ def scan(files):
     if not files:
         return []
 
-    files = sorted(files)
     findings = []
 
+    files = sorted(files)
+
     for file in files:
-        with open(file, "r", encoding="utf-8", errors="ignore") as f:
-            content = f.read()
-            lines = content.splitlines()
-
-        ast_results = detect_ast_secrets(content)
-
-        for finding in ast_results:
-            line = lines[finding.line_number - 1]
-            if finding_has_inline_ignore(line, finding):
-                continue
-            finding_with_file = replace(finding, file_path=str(file))
-            findings.append(finding_with_file)
-
+        findings.extend(scan_file(file))
+    
     return findings
+
 
 
 
