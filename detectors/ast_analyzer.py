@@ -37,7 +37,7 @@ def get_assignments(tree):
         ast.Assign: Assignment nodes found during traversal.
     """
     for node in ast.walk(tree):
-        if isinstance(node, ast.Assign):
+        if isinstance(node, ast.Assign) or isinstance(node, ast.AnnAssign):
             yield node
 
 
@@ -60,7 +60,16 @@ def extract_node_value(node):
     return val.value
 
 
-def extract_variable_path(node):
+def extract_target_nodes(node):
+    if isinstance(node, ast.AnnAssign):
+        yield node.target
+    
+    elif isinstance(node, ast.Assign):
+        for target in node.targets:
+            yield target
+
+
+def extract_variable_path_from_target(target):
     """
     Extract normalized variable paths from assignment targets.
 
@@ -73,37 +82,37 @@ def extract_variable_path(node):
     Yields:
         list[str]: Lowercased variable path components.
     """
-    for var in node.targets:
-        full_path = []
-        temp_node = var
+    
+    full_path = []
+    temp_node = target
 
-        # Walk nested attributes from right to left.
-        if isinstance(temp_node, ast.Attribute):
-            while isinstance(temp_node, ast.Attribute):
-                full_path.append(temp_node.attr.lower())
-                temp_node = temp_node.value
+    # Walk nested attributes from right to left.
+    if isinstance(temp_node, ast.Attribute):
+        while isinstance(temp_node, ast.Attribute):
+            full_path.append(temp_node.attr.lower())
+            temp_node = temp_node.value
 
-            # Ignore unsupported roots such as function calls or subscripts.
-            if not isinstance(temp_node, ast.Name) or isinstance(temp_node, ast.Subscript):
-                continue
+        # Ignore unsupported roots.
+        if not isinstance(temp_node, ast.Name) or isinstance(temp_node, ast.Subscript):
+            return
 
-            full_path.append(temp_node.id.lower())
-            full_path.reverse()
+        full_path.append(temp_node.id.lower())
+        full_path.reverse()
 
-        # Handle direct variable assignment.
-        elif isinstance(var, ast.Name):
-            full_path.append(var.id.lower())
-        
-        elif isinstance(var, ast.Subscript):
-            key = var.slice
+    # Handle direct variable assignment.
+    elif isinstance(target, ast.Name):
+        full_path.append(target.id.lower())
+    
+    elif isinstance(target, ast.Subscript):
+        key = target.slice
 
-            if not (isinstance(key, ast.Constant) and isinstance(key.value, str)):
-                continue
+        if not (isinstance(key, ast.Constant) and isinstance(key.value, str)):
+            return
 
-            full_path.append(key.value.lower())
-            
-        if full_path:
-            yield full_path
+        full_path.append(key.value.lower())
+
+    if full_path:
+        yield full_path
 
 
 def extract_candidates(code):
@@ -130,11 +139,14 @@ def extract_candidates(code):
 
         line_number = node.lineno
 
-        for full_path in extract_variable_path(node):
-            var_name = full_path[-1]
+        targets = extract_target_nodes(node)
+        
+        for target in targets:
+            for full_path in extract_variable_path_from_target(target):
+                var_name = full_path[-1]
 
-            yield Candidate(
-                line_number=line_number,
-                var_name=var_name,
-                value=val,
-            )
+                yield Candidate(
+                    line_number=line_number,
+                    var_name=var_name,
+                    value=val,
+                )
