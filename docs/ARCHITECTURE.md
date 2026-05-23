@@ -1,71 +1,50 @@
 # Architecture
 
-This document explains SentinelScan's internal architecture, data flow, and module responsibilities.
+SentinelScan is a Python CLI static-analysis tool for finding hardcoded secrets in Python source files. It uses AST-based extraction, modular detection rules, entropy/confidence scoring, suppression logic, and structured text/JSON output.
 
 ---
 
-## High-Level Pipeline
-
-SentinelScan follows a staged pipeline:
+## Pipeline
 
 ```text
-file discovery
+CLI arguments
+→ path validation
+→ .sentinelscanignore discovery
+→ Python file discovery
+→ file ignore filtering
 → file reading
 → AST parsing
 → candidate extraction
 → rule evaluation
 → finding creation
+→ inline ignore filtering
 → file path attachment
-→ severity filtering
+→ severity/confidence filtering
 → output formatting
 ```
 
-Detailed flow:
-
-1. Parse CLI arguments with `argparse`
-2. Validate that the provided path is a directory
-3. Recursively discover Python files
-4. Read each Python file safely
-5. Parse source code into a Python AST
-6. Find assignment nodes
-7. Extract string literal assignment values
-8. Extract variable paths from simple variables and nested attributes
-9. Create `Candidate` objects from extracted AST data
-10. Apply modular rules to each candidate
-11. Create `Finding` objects for confirmed matches
-12. Attach file paths in the scanner layer
-13. Apply optional severity filtering
-14. Output results as human-readable text or JSON
-15. Apply optional redaction only during output formatting
-
 ---
 
-## Design Goals
+## Design Principles
 
-SentinelScan is designed around separation of concerns:
-
-| Layer | Responsibility |
+| Area | Responsibility |
 |---|---|
-| CLI | Parse user input |
-| Scanner | Handle files and paths |
-| AST analyzer | Extract candidates from Python code |
-| Rule engine | Apply rules to candidates |
-| Models | Define shared structured data |
-| Output | Format findings as text or JSON |
+| AST analyzer | Extract possible candidates |
+| Rule engine | Convert matching candidates into findings |
+| Scanner | Handle file paths, file reading, and source-line suppression |
+| Output layer | Handle filtering, redaction, text output, and JSON output |
+| Ignore system | Skip files before scanning |
+| Inline ignore system | Suppress findings after detection |
 
-This prevents extraction, detection, filtering, and formatting logic from becoming tangled.
+This separation keeps extraction, detection, suppression, filtering, and presentation independent.
 
 ---
 
 ## Core Data Models
 
-SentinelScan uses dataclasses to avoid fragile tuple-based data flow.
-
 ### `Rule`
 
-A `Rule` represents one detection rule.
-
-Conceptually stores:
+Represents one detection rule.
 
 ```text
 rule_id
@@ -77,13 +56,19 @@ value_pattern
 min_length
 ```
 
-Rules are defined once and reused by the rule engine.
+Examples:
+
+```text
+PASSWORD
+API_KEY
+TOKEN
+SECRET
+AWS_ACCESS_KEY
+```
 
 ### `Candidate`
 
-A `Candidate` represents extracted source-code data that might be suspicious.
-
-Conceptually stores:
+Represents extracted source-code data that may be suspicious.
 
 ```text
 line_number
@@ -91,27 +76,23 @@ var_name
 value
 ```
 
-Candidates are created before rule evaluation.
-
-Example source:
+Example:
 
 ```python
-self.config.password = "abcdef"
+config["api_key"] = "abc1234567890j"
 ```
 
 Candidate:
 
 ```text
 line_number = 1
-var_name = "password"
-value = "abcdef"
+var_name = "api_key"
+value = "abc1234567890j"
 ```
 
 ### `Finding`
 
-A `Finding` represents a confirmed detection.
-
-Conceptually stores:
+Represents a confirmed rule match.
 
 ```text
 file_path
@@ -122,19 +103,19 @@ rule_id
 rule_name
 severity
 reason
+confidence
+entropy
 ```
 
-Findings are used by filtering, JSON output, text output, and tests.
+Findings are used by filtering, redaction, JSON output, text output, inline ignore suppression, and tests.
 
 ---
 
 ## Candidate vs Finding
 
-Candidates and findings are intentionally separate.
-
 | Object | Meaning | Created by |
 |---|---|---|
-| `Candidate` | Extracted value that might match a rule | AST analyzer |
+| `Candidate` | Extracted value that may match a rule | AST analyzer |
 | `Finding` | Confirmed rule match | Rule engine |
 
 Example:
@@ -143,9 +124,7 @@ Example:
 username = "abcdef"
 ```
 
-This may become a `Candidate`, but it should not become a `Finding` if no rule matches.
-
-Example:
+This may become a candidate, but should not become a finding.
 
 ```python
 password = "abcdef"
@@ -159,182 +138,287 @@ Candidate → rule match → Finding
 
 ---
 
+## Supported AST Extraction
+
+SentinelScan currently evaluates hardcoded string literal assignments.
+
+### Simple Assignments
+
+```python
+password = "abcdef"
+api_key = "abc1234567890j"
+token = "abc1234567890j"
+```
+
+### Attribute Assignments
+
+```python
+self.password = "abcdef"
+config.api_key = "abc1234567890j"
+settings.auth.credentials.api_key = "abc1234567890j"
+```
+
+The final attribute name is used.
+
+### Subscript Assignments
+
+```python
+config["password"] = "abcdef"
+settings["api_key"] = "abc1234567890j"
+secrets["token"] = "abc1234567890j"
+config["auth"]["password"] = "abcdef"
+```
+
+The final string key is used.
+
+Unsupported subscript examples:
+
+```python
+config[password_key] = "abcdef"
+items[0] = "abcdef"
+```
+
+These are ignored because the key is not a string literal.
+
+---
+
+## Confidence and Entropy
+
+SentinelScan tracks both severity and confidence.
+
+| Signal | Meaning |
+|---|---|
+| Severity | Impact if the finding is real |
+| Confidence | Likelihood that the value is a real secret |
+
+Confidence uses:
+
+- Value length
+- Shannon entropy
+- Common/test value heuristics
+- Strong value-pattern matches
+
+Examples:
+
+| Value | Expected Confidence |
+|---|---|
+| `abcdef` | `LOW` |
+| `xyzttttggfdddf` | `MEDIUM` |
+| `abc1234567890j` | `HIGH` |
+| `AKIAEXAMPLE123456789` | `HIGH` |
+
+Entropy is stored on each finding as metadata.
+
+---
+
+## Filtering
+
+Severity filter:
+
+```bash
+python3 main.py path/to/project --severity HIGH
+```
+
+Confidence filter:
+
+```bash
+python3 main.py path/to/project --confidence HIGH
+```
+
+Combined:
+
+```bash
+python3 main.py path/to/project --severity HIGH --confidence HIGH
+```
+
+Filtering controls displayed findings. It does not change detection.
+
+---
+
+## Redaction
+
+Redaction is applied only during output formatting.
+
+```bash
+python3 main.py path/to/project --redact
+```
+
+Example:
+
+```text
+abc1234567890j → ab**********0j
+```
+
+Short values are fully redacted:
+
+```text
+[REDACTED]
+```
+
+The rule engine always evaluates the original value.
+
+---
+
+## Suppression Systems
+
+| System | Applies When | Purpose |
+|---|---|---|
+| `.sentinelscanignore` | Before scanning | Skip files/directories |
+| Inline ignores | After detection | Suppress findings on specific lines |
+
+---
+
+## `.sentinelscanignore`
+
+`.sentinelscanignore` is a plain text pattern file.
+
+```text
+venv/
+__pycache__/
+test_dirs/
+*.min.py
+ignored.py
+```
+
+Supported behavior:
+
+- Blank lines are ignored
+- Comment lines are ignored
+- Directory patterns are supported
+- Filename patterns are supported
+- Glob patterns are supported
+- Parent ignore files can apply to child scan paths
+
+Implementation:
+
+```text
+ignore.py
+```
+
+---
+
+## Inline Ignores
+
+Generic inline ignore:
+
+```python
+password = "fakepassword"  # sentinelscan: ignore
+```
+
+Suppresses all findings on that line.
+
+Rule-specific inline ignore:
+
+```python
+api_key = "AKIAEXAMPLE123456789"  # sentinelscan: ignore AWS_ACCESS_KEY
+```
+
+Suppresses only the listed rule.
+
+Example result:
+
+```text
+AWS_ACCESS_KEY → suppressed
+API_KEY        → still reported
+```
+
+Multiple rules:
+
+```python
+api_key = "AKIAEXAMPLE123456789"  # sentinelscan: ignore AWS_ACCESS_KEY API_KEY
+```
+
+Inline ignore detection checks Python comment tokens, so this does not suppress findings:
+
+```python
+password = "sentinelscan: ignore"
+```
+
+Implementation:
+
+```text
+inline_ignore.py
+```
+
+---
+
 ## Module Responsibilities
 
-### `cli.py`
+| Module | Responsibility |
+|---|---|
+| `cli.py` | Parse command-line arguments |
+| `main.py` | Orchestrate scan flow |
+| `scanner.py` | Validate paths, discover/read files, apply inline ignores, attach file paths |
+| `ignore.py` | Load and apply `.sentinelscanignore` patterns |
+| `inline_ignore.py` | Detect generic and rule-specific inline ignores |
+| `output.py` | Filter, redact, format, and serialize findings |
+| `detectors/ast_analyzer.py` | Parse AST and extract candidates |
+| `detectors/confidence.py` | Calculate entropy and confidence |
+| `detectors/models.py` | Define dataclasses |
+| `detectors/rules.py` | Define built-in rules |
+| `detectors/rule_engine.py` | Apply rules to candidates |
+| `detectors/find_secrets.py` | Coordinate candidate extraction and rule evaluation |
 
-Handles command-line argument parsing.
+---
 
-Current CLI options include:
-
-```text
-path
---json
---severity
---redact
-```
-
-### `main.py`
-
-Acts as the CLI entry point.
-
-Responsible for orchestrating:
-
-```text
-CLI args
-→ path validation
-→ file discovery
-→ scanning
-→ filtering
-→ output
-```
-
-### `scanner.py`
-
-Handles file-system level scanning work:
-
-- Validates input paths
-- Recursively finds Python files
-- Reads file contents safely
-- Calls the detector
-- Attaches file paths to findings
-
-Scanner is the correct layer for file paths because it knows which file is being read.
-
-### `output.py`
-
-Handles output-specific behavior:
-
-- Severity filtering
-- JSON serialization
-- Human-readable text formatting
-- Secret redaction
-
-Redaction belongs in the output layer because the rule engine should preserve original values internally.
-
-### `detectors/ast_analyzer.py`
-
-Handles Python AST parsing and candidate extraction.
-
-Responsible for:
-
-- Parsing code
-- Finding assignment nodes
-- Extracting string literal values
-- Extracting simple and nested variable names
-- Creating candidate objects
-
-### `detectors/models.py`
-
-Defines structured dataclass models used across the scanner:
-
-- `Rule`
-- `Candidate`
-- `Finding`
-
-### `detectors/rules.py`
-
-Contains built-in rule definitions.
-
-Rules are data-driven and include:
-
-- Rule ID
-- Rule name
-- Severity
-- Reason
-- Variable-name regex patterns
-- Optional value regex patterns
-- Optional minimum length
-
-### `detectors/rule_engine.py`
-
-Applies rules to candidates.
-
-Responsible for:
-
-- Checking value-pattern-based rules
-- Checking variable-name-based rules
-- Creating finding objects
-- Returning structured findings
-
-### `detectors/find_secrets.py`
-
-Coordinates AST extraction and rule evaluation.
-
-Responsible for:
+## Test Layout
 
 ```text
-code string → candidates → findings
+tests/
+├── test_ast/
+│   ├── ast_helpers.py
+│   ├── test_ast_attributes.py
+│   ├── test_ast_core.py
+│   └── test_ast_subscripts.py
+├── test_cli/
+│   ├── test_cli_errors.py
+│   ├── test_cli_filters.py
+│   ├── test_cli_ignore.py
+│   ├── test_cli_inline_ignore.py
+│   ├── test_cli_output.py
+│   └── test_cli_redaction.py
+├── helpers.py
+├── test_apply_rules.py
+├── test_confidence.py
+├── test_ignore.py
+└── test_inline_ignore.py
 ```
 
 ---
 
-## Why Dataclasses
+## Current Limitations
 
-Earlier versions used tuples such as:
-
-```text
-(line_number, file_path, rule_name, severity, value, reason)
-```
-
-That became fragile because adding one field required changing tuple unpacking across multiple modules.
-
-Dataclasses make the data flow clearer:
-
-```text
-finding.line_number
-finding.file_path
-finding.rule_name
-finding.severity
-finding.value
-finding.reason
-```
-
-Benefits:
-
-- Clearer field names
-- Easier refactoring
-- Cleaner tests
-- Less tuple-order fragility
-- Better editor autocomplete
-- Easier JSON conversion
+- Only Python files are scanned
+- Only string literal assignments are evaluated
+- Function call arguments are not fully analyzed yet
+- Dictionary literal contents are not fully analyzed yet
+- Environment files such as `.env` are not scanned yet
+- No multi-file data flow analysis yet
+- No taint analysis yet
+- No SARIF output yet
+- No installable package entry point yet
+- Config support is not fully implemented yet
 
 ---
 
-## Project Structure
+## Future Architecture Directions
+
+Likely future modules:
 
 ```text
-SENTINELSCAN/
-├── .github/
-│   └── workflows/
-│       └── tests.yaml              # GitHub Actions workflow for Ruff and pytest
-├── detectors/
-│   ├── __init__.py                 # Makes detectors an importable package
-│   ├── ast_analyzer.py             # AST parsing and candidate extraction
-│   ├── find_secrets.py             # High-level detection orchestration
-│   ├── models.py                   # Rule, Candidate, and Finding dataclasses
-│   ├── rule_engine.py              # Applies rules to candidates
-│   └── rules.py                    # Built-in rule definitions
-├── test_dirs/
-│   ├── edge_repo/
-│   │   └── edge_test.py            # Edge-case fixture file
-│   └── test_repo/
-│       ├── embedded_test/
-│       │   └── embedded_hello.py   # Nested fixture file
-│       ├── hello.py                # Benign fixture file
-│       └── open_vulns.py           # Fixture file containing sample vulnerabilities
-├── tests/
-│   ├── test_apply_rules.py         # Unit tests for rule engine behavior
-│   ├── test_ast.py                 # Tests for AST-based detection
-│   └── test_cli.py                 # CLI integration tests
-├── .gitignore
-├── cli.py                          # CLI argument parsing
-├── LICENSE
-├── main.py                         # Application entry point
-├── output.py                       # JSON/text output formatting, filtering, and redaction
-├── pytest.ini                      # Pytest import path configuration
-├── README.md                       # Project overview
-└── scanner.py                      # Path validation, file discovery, file reading, and scan orchestration
+config.py
+sarif.py
+reporting.py
+file_types/
+dataflow.py
+taint.py
 ```
 
-Generated local files such as `__pycache__/`, `.pytest_cache/`, `.ruff_cache/`, and `venv/` may appear during development but should not be committed.
+Likely next milestones:
+
+1. JSON config support
+2. Rule disabling through config
+3. Dictionary literal extraction
+4. Function-call keyword argument extraction
+5. SARIF output
+6. Package metadata and console script entry point

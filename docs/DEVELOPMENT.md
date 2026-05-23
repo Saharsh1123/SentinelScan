@@ -1,6 +1,8 @@
 # Development Guide
 
-This document covers local setup, linting, formatting, project structure, and recommended development workflow.
+This document covers local setup, testing, linting, project structure, and development workflow for SentinelScan.
+
+SentinelScan uses only Python standard-library modules at runtime. Development tooling uses `pytest` and `ruff`.
 
 ---
 
@@ -26,11 +28,17 @@ Install development dependencies:
 python3 -m pip install pytest ruff
 ```
 
-SentinelScan currently uses only Python standard-library modules at runtime.
+Verify tools:
+
+```bash
+python3 --version
+pytest --version
+ruff --version
+```
 
 ---
 
-## Running the Tool Locally
+## Running SentinelScan
 
 Scan a directory:
 
@@ -44,28 +52,34 @@ Scan fixtures:
 python3 main.py test_dirs
 ```
 
-Run JSON output:
+JSON output:
 
 ```bash
 python3 main.py test_dirs --json
 ```
 
-Run severity filtering:
+Severity filter:
 
 ```bash
 python3 main.py test_dirs --severity HIGH
 ```
 
-Run redacted JSON output:
+Confidence filter:
 
 ```bash
-python3 main.py test_dirs --json --redact
+python3 main.py test_dirs --confidence HIGH
 ```
 
-Run combined flags:
+Redaction:
 
 ```bash
-python3 main.py test_dirs --json --severity HIGH --redact
+python3 main.py test_dirs --redact
+```
+
+Combined options:
+
+```bash
+python3 main.py test_dirs --json --severity HIGH --confidence HIGH --redact
 ```
 
 ---
@@ -78,7 +92,7 @@ Run Ruff:
 ruff check .
 ```
 
-Auto-fix safe lint issues:
+Auto-fix safe issues:
 
 ```bash
 ruff check . --fix
@@ -90,29 +104,65 @@ Format code:
 ruff format .
 ```
 
-Ruff is used to keep the codebase clean and catch common issues such as:
-
-- Unused imports
-- Formatting problems
-- Simple style issues
-- Common Python mistakes
-
 ---
 
-## Recommended Check Before Committing
+## Testing
+
+Run all tests:
 
 ```bash
-ruff check .
 pytest
-python3 main.py test_dirs
-python3 main.py test_dirs --json
-python3 main.py test_dirs --json --severity HIGH
-python3 main.py test_dirs --json --severity HIGH --redact
+```
+
+Run a specific file:
+
+```bash
+pytest tests/test_confidence.py
+```
+
+Run a folder:
+
+```bash
+pytest tests/test_ast
+pytest tests/test_cli
+```
+
+Run one test:
+
+```bash
+pytest tests/test_ast/test_ast_subscripts.py::test_ast_subscript_password_assignment
+```
+
+Quiet mode:
+
+```bash
+pytest -q
 ```
 
 ---
 
-## Suggested Commit Flow
+## Pre-Commit Check
+
+Run before committing:
+
+```bash
+ruff check .
+pytest
+```
+
+For CLI behavior changes, also run:
+
+```bash
+python3 main.py test_dirs
+python3 main.py test_dirs --json
+python3 main.py test_dirs --json --severity HIGH
+python3 main.py test_dirs --json --confidence HIGH
+python3 main.py test_dirs --json --severity HIGH --confidence HIGH --redact
+```
+
+---
+
+## Commit Workflow
 
 ```bash
 git status
@@ -121,26 +171,73 @@ git commit -m "your commit message"
 git push
 ```
 
-Recommended commit message types:
+Recommended commit prefixes:
 
 ```text
-feat: add new user-facing behavior
-fix: correct broken behavior
-refactor: improve internal structure without changing behavior
-test: add or update tests
-docs: update documentation
-ci: update GitHub Actions or automation
-chore: maintenance work
+feat: user-facing feature
+fix: bug fix
+refactor: internal structure change
+test: test updates
+docs: documentation update
+ci: workflow/automation update
+chore: maintenance
 ```
 
 Examples:
 
 ```bash
-git commit -m "feat: add redacted output mode"
-git commit -m "refactor: add structured rule engine models"
-git commit -m "test: add CLI redaction coverage"
-git commit -m "docs: split project documentation"
+git commit -m "feat: add confidence filtering"
+git commit -m "feat: add sentinelscanignore support"
+git commit -m "refactor: split CLI tests by responsibility"
+git commit -m "test: add subscript assignment coverage"
+git commit -m "docs: update architecture documentation"
 ```
+
+---
+
+## Development Workflow
+
+Use small, focused changes.
+
+```text
+1. Pick one behavior
+2. Add or update a focused test
+3. Run the targeted test
+4. Implement the change
+5. Run the targeted test again
+6. Run the full test suite
+7. Run Ruff
+8. Manually test CLI behavior if needed
+9. Update relevant docs
+10. Commit
+```
+
+Avoid mixing unrelated feature, refactor, test, and documentation changes in one commit.
+
+---
+
+## Current Feature Areas
+
+SentinelScan currently includes:
+
+- AST-based Python scanning
+- Simple assignment detection
+- Attribute assignment detection
+- Subscript assignment detection
+- Modular rule engine
+- Structured dataclass models
+- Entropy metadata
+- Confidence scoring
+- Text and JSON output
+- Severity filtering
+- Confidence filtering
+- Redaction
+- `.sentinelscanignore`
+- Generic inline ignores
+- Rule-specific inline ignores
+- Ruff linting
+- Pytest coverage
+- GitHub Actions test workflow
 
 ---
 
@@ -148,72 +245,99 @@ git commit -m "docs: split project documentation"
 
 ```text
 SENTINELSCAN/
-├── .github/
-│   └── workflows/
-│       └── tests.yaml              # GitHub Actions workflow for Ruff and pytest
+├── .github/workflows/tests.yaml
 ├── detectors/
-│   ├── __init__.py                 # Makes detectors an importable package
-│   ├── ast_analyzer.py             # AST parsing and candidate extraction
-│   ├── find_secrets.py             # High-level detection orchestration
-│   ├── models.py                   # Rule, Candidate, and Finding dataclasses
-│   ├── rule_engine.py              # Applies rules to candidates
-│   └── rules.py                    # Built-in rule definitions
+│   ├── ast_analyzer.py
+│   ├── confidence.py
+│   ├── find_secrets.py
+│   ├── models.py
+│   ├── rule_engine.py
+│   └── rules.py
+├── docs/
+│   ├── ARCHITECTURE.md
+│   ├── DETECTION_RULES.md
+│   ├── DEVELOPMENT.md
+│   ├── ROADMAP.md
+│   ├── TESTING.md
+│   └── USAGE.md
 ├── test_dirs/
-│   ├── edge_repo/
-│   │   └── edge_test.py            # Edge-case fixture file
-│   └── test_repo/
-│       ├── embedded_test/
-│       │   └── embedded_hello.py   # Nested fixture file
-│       ├── hello.py                # Benign fixture file
-│       └── open_vulns.py           # Fixture file containing sample vulnerabilities
 ├── tests/
-│   ├── test_apply_rules.py         # Unit tests for rule engine behavior
-│   ├── test_ast.py                 # Tests for AST-based detection
-│   └── test_cli.py                 # CLI integration tests
-├── .gitignore
-├── cli.py                          # CLI argument parsing
-├── LICENSE
-├── main.py                         # Application entry point
-├── output.py                       # JSON/text output formatting, filtering, and redaction
-├── pytest.ini                      # Pytest import path configuration
-├── README.md                       # Project overview
-└── scanner.py                      # Path validation, file discovery, file reading, and scan orchestration
+│   ├── test_ast/
+│   ├── test_cli/
+│   ├── helpers.py
+│   ├── test_apply_rules.py
+│   ├── test_confidence.py
+│   ├── test_ignore.py
+│   └── test_inline_ignore.py
+├── .sentinelscanignore
+├── cli.py
+├── ignore.py
+├── inline_ignore.py
+├── main.py
+├── output.py
+├── scanner.py
+└── pytest.ini
 ```
 
-Generated local files such as `__pycache__/`, `.pytest_cache/`, `.ruff_cache/`, and `venv/` may appear during development but should not be committed.
+Generated files such as `__pycache__/`, `.pytest_cache/`, `.ruff_cache/`, `.vscode/`, and `venv/` should not be committed unless intentionally configured.
 
 ---
 
-## Development Notes
+## Module Overview
 
-### Keep Detection and Output Separate
+| Module | Responsibility |
+|---|---|
+| `cli.py` | Parse command-line arguments |
+| `main.py` | Coordinate scan flow |
+| `scanner.py` | Validate paths, discover/read files, apply source suppression |
+| `ignore.py` | Load and apply `.sentinelscanignore` patterns |
+| `inline_ignore.py` | Handle generic and rule-specific inline ignores |
+| `output.py` | Filter, redact, format, and serialize findings |
+| `detectors/ast_analyzer.py` | Parse AST and extract candidates |
+| `detectors/rule_engine.py` | Apply rules and create findings |
+| `detectors/confidence.py` | Calculate entropy and confidence |
+| `detectors/models.py` | Define dataclasses |
+| `detectors/rules.py` | Define built-in rules |
+| `detectors/find_secrets.py` | Coordinate candidate extraction and rule evaluation |
 
-The rule engine should detect findings using original values.
+---
 
-Output formatting should decide whether to display original values or redacted values.
+## Testing Map
 
-### Keep File Paths in the Scanner Layer
+| Feature Type | Test Location |
+|---|---|
+| Rule engine behavior | `tests/test_apply_rules.py` |
+| Confidence behavior | `tests/test_confidence.py` |
+| AST extraction | `tests/test_ast/` |
+| CLI behavior | `tests/test_cli/` |
+| Ignore file behavior | `tests/test_ignore.py` |
+| Inline ignore behavior | `tests/test_inline_ignore.py` |
 
-The scanner knows which file is being read, so it attaches file paths to findings.
+Add tests with every feature change.
 
-The AST analyzer and rule engine should not depend on file-system paths.
+---
 
-### Prefer Structured Models Over Tuples
+## Architecture Guidelines
 
-Use dataclass fields such as:
+- Detection should use original values.
+- Redaction should happen only in the output layer.
+- File path handling should stay in the scanner layer.
+- AST extraction should not depend on filesystem paths.
+- `.sentinelscanignore` should remain a plain text pattern file.
+- Inline ignores should suppress findings after detection.
+- JSON output should remain machine-readable and free of human-readable scan text.
+- Future config precedence should be: defaults → config file → CLI flags.
 
-```text
-finding.rule_id
-finding.rule_name
-finding.severity
-finding.value
-finding.reason
-```
+---
 
-Avoid returning large tuples where field order must be memorized.
+## Documentation Updates
 
-### Add Tests With Every Feature
+Update documentation when behavior changes.
 
-New CLI behavior should have CLI tests.
-
-New rule behavior should have rule-engine and AST tests where appropriate.
+| Change Type | Likely Docs |
+|---|---|
+| CLI option | `README`, `docs/USAGE.md`, `docs/DEVELOPMENT.md` |
+| Detection behavior | `docs/DETECTION_RULES.md`, `docs/ARCHITECTURE.md` |
+| Internal structure | `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md` |
+| Testing strategy | `docs/TESTING.md`, `docs/DEVELOPMENT.md` |
+| Roadmap change | `docs/ROADMAP.md` |

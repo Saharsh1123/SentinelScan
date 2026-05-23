@@ -1,97 +1,73 @@
 # Roadmap and Limitations
 
-This document lists SentinelScan's current limitations and possible future improvements.
+This document summarizes SentinelScan's current status, known limitations, and planned improvements.
 
 ---
 
-## Current Project Status
+## Current Status
 
-SentinelScan is an educational static-analysis project.
+SentinelScan is an educational static-analysis project focused on Python hardcoded-secret detection.
 
-It currently demonstrates:
+Current capabilities include:
 
 - Python AST parsing
 - Candidate extraction
 - Modular rule evaluation
-- Structured `Rule`, `Candidate`, and `Finding` models
+- Structured `Rule`, `Candidate`, and `Finding` dataclasses
+- Simple assignment detection
+- Attribute assignment detection
+- Subscript assignment detection
+- Entropy metadata
+- Confidence scoring
 - Human-readable CLI output
 - JSON output
 - Severity filtering
+- Confidence filtering
 - Secret redaction
-- Pytest-based test coverage
+- `.sentinelscanignore`
+- Generic inline ignores
+- Rule-specific inline ignores
+- Pytest test coverage
 - Ruff linting
 - GitHub Actions CI
 
-It is not a replacement for mature secret-scanning tools such as GitHub secret scanning, Gitleaks, TruffleHog, Semgrep, or CodeQL.
+SentinelScan is not a replacement for mature tools such as GitHub secret scanning, Gitleaks, TruffleHog, Semgrep, or CodeQL.
 
 ---
 
 ## Current Limitations
 
+SentinelScan is intentionally scoped.
+
+Current limitations:
+
 - Only scans Python files (`.py`)
-- Only analyzes assignment statements supported by the current AST logic
-- Does not currently support dictionary/subscript assignments such as `config["password"] = "value"`
-- Does not currently detect secrets passed directly into function calls
-- Does not currently detect secrets returned from functions
-- Does not currently detect secrets built through string concatenation
-- Does not currently detect secrets loaded from environment variables
-- Does not perform entropy scoring yet
-- Does not currently assign confidence levels
-- Does not perform deep data-flow analysis
+- Only evaluates hardcoded string literal assignments
+- Does not fully analyze dictionary literals
+- Does not detect secrets passed directly into function calls
+- Does not detect secrets returned from functions
+- Does not detect secrets built through string concatenation
+- Does not follow values across variables
+- Does not analyze environment files such as `.env`
+- Does not perform multi-file data-flow analysis
 - Does not perform taint analysis
 - Does not support SARIF output yet
-- Does not currently support custom user-defined rules
+- Does not support custom user-defined rules yet
+- Does not support full config-file behavior yet
 - Detection rules may still produce false positives or false negatives
-- Redaction is optional, so users should use `--redact` when sharing scan output
-
----
-
-## Planned Improvements
-
-Potential future improvements:
-
-- Add entropy-based scoring for random-looking secrets
-- Add confidence scoring
-- Add support for dictionary/subscript assignments
-- Add support for annotated assignments
-- Add support for function-call argument detection
-- Add support for string concatenation detection
-- Add config file support
-- Add ignore rules for files, directories, or specific findings
-- Add SARIF output for GitHub code scanning integration
-- Add broader secret patterns such as JWTs and private keys
-- Add support for additional file types beyond Python
-- Add benchmarking fixtures for larger repositories
-- Add summarized scan statistics
-- Add GitHub repository scanning
-- Add HTML report generation
-- Add baseline/diff scan mode
-- Add pre-commit hook support
-
----
-
-## Near-Term Priorities
-
-Recommended next improvements:
-
-1. Add entropy scoring for high-randomness values
-2. Add confidence levels separate from severity
-3. Add support for dictionary/subscript assignments
-4. Add config/ignore support
-5. Add SARIF output for GitHub code scanning
 
 ---
 
 ## Severity vs Confidence
 
-Future versions may separate severity and confidence.
+SentinelScan separates severity from confidence.
 
 ```text
-Severity = impact if the finding is real
+Severity   = impact if the finding is real
 Confidence = likelihood that the finding is real
 ```
 
-Example:
+Examples:
 
 ```text
 HIGH severity, HIGH confidence
@@ -99,7 +75,58 @@ HIGH severity, LOW confidence
 MEDIUM severity, HIGH confidence
 ```
 
-This would make reports more useful and reduce noisy output.
+This makes output more useful because a finding can be dangerous but still low-confidence.
+
+---
+
+## Near-Term Priorities
+
+Recommended next improvements:
+
+1. Add JSON config support
+2. Add rule disabling through config
+3. Add dictionary literal extraction
+4. Add function-call keyword argument detection
+5. Add SARIF output
+6. Add packaging support with a console script entry point
+
+---
+
+## Planned Improvements
+
+Potential future improvements:
+
+- JSON config file support
+- Configurable default redaction
+- Configurable severity and confidence filters
+- Rule disabling by rule ID
+- Custom user-defined rules
+- Dictionary literal scanning
+- Function-call argument scanning
+- Annotated assignment support
+- String concatenation handling
+- Constant propagation
+- Additional secret patterns:
+  - JWTs
+  - Private keys
+  - GitHub tokens
+  - Slack tokens
+  - Google API keys
+  - Database connection strings
+  - Bearer tokens
+- Additional file types:
+  - `.env`
+  - `.json`
+  - `.yaml`
+  - `.toml`
+  - generic text files
+- SARIF output
+- Markdown or HTML reports
+- Summary statistics
+- Baseline/diff scan mode
+- Pre-commit hook support
+- GitHub repository scanning
+- Benchmark fixtures for larger repositories
 
 ---
 
@@ -113,8 +140,8 @@ Current output formats:
 Potential future formats:
 
 - SARIF
-- HTML report
 - Markdown report
+- HTML report
 - CSV
 - Baseline/diff report
 
@@ -125,11 +152,12 @@ Potential future formats:
 Long-term, SentinelScan could evolve into a broader static-analysis learning project with:
 
 - Multi-file scanning
-- Configurable rules
-- Ignore comments
-- More AST node support
+- Configurable detection rules
+- Additional file type support
 - Lightweight data-flow tracking
 - Taint-analysis concepts
 - CI/CD integration
-- GitHub repository scanning
+- GitHub code scanning integration
 - Security-report generation
+
+The main goal is to keep improving the scanner while preserving a clean architecture, strong tests, and explainable limitations.

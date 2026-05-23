@@ -4,13 +4,22 @@ SentinelScan application entry point.
 Coordinates CLI input, file discovery, scanning, filtering, and output.
 """
 
-from cli import input_path, chosen_severity, use_json, redact_secrets, chosen_confidence
+from cli import return_args
 from scanner import check_path, scan, list_python_files
 from output import filter_results, output
 
 
 if __name__ == "__main__":
     try:
+        args = return_args()
+        
+        # Export parsed values for the application entry point.
+        input_path = args.path
+        use_json = args.json
+        redact_secrets = args.redact
+        chosen_severity = args.severity
+        chosen_confidence = args.confidence  
+
         # Validate the target directory.
         path = check_path(input_path)
 

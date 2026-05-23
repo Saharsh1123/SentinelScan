@@ -38,11 +38,5 @@ parser.add_argument(
     help="Redact detected secret values",
 )
 
-args = parser.parse_args()
-
-# Export parsed values for the application entry point.
-input_path = args.path
-use_json = args.json
-redact_secrets = args.redact
-chosen_severity = args.severity
-chosen_confidence = args.confidence
+def return_args():
+    return parser.parse_args()

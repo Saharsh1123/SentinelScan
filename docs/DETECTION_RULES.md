@@ -1,24 +1,22 @@
 # Detection Rules
 
-This document explains SentinelScan's rule engine, built-in rules, supported assignment patterns, detection reasons, and known detection limitations.
+This document explains SentinelScan's rule engine, built-in rules, supported assignment patterns, detection reasons, confidence scoring, and limitations.
 
 ---
 
-## Detection Engine Overview
-
-SentinelScan uses a modular rule engine.
-
-The detection process is:
+## Detection Flow
 
 ```text
 Candidate → apply rules → Finding
 ```
 
-Rules can match based on:
+Rules can match using:
 
 1. Variable name patterns
 2. Value patterns
 3. Minimum value length
+
+The AST analyzer extracts candidates. The rule engine evaluates candidates and returns structured findings.
 
 ---
 
@@ -34,59 +32,65 @@ Rules can match based on:
 
 ---
 
-## Detection Types
+## Variable-Name Detection
 
-### Variable-Name-Based Detection
-
-These rules detect secrets based on suspicious variable names plus minimum value length.
-
-Examples:
+These rules match suspicious variable names when the assigned string value meets the minimum length.
 
 ```python
 password = "abcdef"
 pwd = "abcdef"
 passwd = "abcdef"
-self.config.db.password = "abcdef"
 api_key = "12345678"
 apikey = "12345678"
 token = "qwerty123"
 client_secret = "abcdef"
 ```
 
-These rules reduce obvious false positives by requiring the string value to meet the configured minimum length.
+Supported forms:
 
-### Value-Pattern-Based Detection
+```python
+self.password = "abcdef"
+self.config.db.password = "abcdef"
+config["password"] = "abcdef"
+settings["api_key"] = "abc1234567890j"
+```
 
-These rules detect secrets based on the value itself.
+Short values are ignored:
 
-Example:
+```python
+password = "abc"
+```
+
+---
+
+## Value-Pattern Detection
+
+Some rules match the value itself.
 
 ```python
 random_var = "AKIAEXAMPLE123456789"
 ```
 
-This can still be flagged as an AWS access key even if the variable name is not suspicious.
+This can be flagged as `AWS_ACCESS_KEY` even if the variable name is not suspicious.
 
 ---
 
 ## Multiple Classifications
 
-Some assignments can match more than one rule.
-
-Example:
+One assignment can trigger multiple rules.
 
 ```python
 api_key = "AKIAEXAMPLE123456789"
 ```
 
-This may produce two findings:
+Possible findings:
 
 ```text
 AWS_ACCESS_KEY
 API_KEY
 ```
 
-because:
+Reasons:
 
 - The value matches the AWS access key pattern
 - The variable name matches the API key pattern
@@ -95,9 +99,7 @@ because:
 
 ## Detection Reasons
 
-Every finding includes a reason explaining why it was flagged.
-
-Current reason strings include:
+Each finding includes a reason.
 
 ```text
 value matched AKIA-prefixed AWS access key pattern
@@ -107,37 +109,27 @@ variable name matched token pattern and value met minimum length
 variable name matched secret pattern and value met minimum length
 ```
 
-Reasons are included in both text and JSON output.
+Reasons are included in text and JSON output.
 
 ---
 
 ## Supported Assignment Patterns
 
-SentinelScan currently supports simple Python assignment patterns.
-
-Supported examples:
-
-```python
-password = "abcdef"
-self.password = "abcdef"
-self.config.db.password = "abcdef"
-a = password = "abcdef"
-password = token = "abcdef"
-api_key = "AKIAEXAMPLE123456789"
-```
-
 ### Simple Variables
 
 ```python
 password = "abcdef"
-token = "qwerty123"
+api_key = "12345678"
+token = "abc1234567890j"
+secret = "abcdef"
 ```
 
-### Object Attributes
+### Attributes
 
 ```python
 self.password = "abcdef"
 config.api_key = "12345678"
+user.token = "abc1234567890j"
 ```
 
 ### Nested Attributes
@@ -147,70 +139,241 @@ self.config.db.password = "abcdef"
 settings.auth.credentials.api_key = "12345678"
 ```
 
-### Multiple Assignment Targets
+The final attribute name is used.
+
+### Subscripts
+
+```python
+config["password"] = "abcdef"
+settings["api_key"] = "abc1234567890j"
+secrets["token"] = "abc1234567890j"
+config["auth"]["password"] = "abcdef"
+```
+
+The final string key is used.
+
+### Multiple Targets
 
 ```python
 a = password = "abcdef"
 password = token = "abcdef"
+config["password"] = settings["token"] = "abcdef"
 ```
+
+Each sensitive target can produce a finding.
 
 ---
 
-## Unsupported Assignment Patterns
+## Ignored Patterns
 
-SentinelScan intentionally ignores unsupported or non-string assignments such as:
+SentinelScan ignores unsupported or low-signal patterns.
 
 ```python
 password = 123456
-config["password"] = "abcdef"
+config[password_key] = "abcdef"
+items[0] = "abcdef"
 password = os.getenv("PASSWORD")
 password = input("Enter password: ")
+password = "abc" + "def"
 ```
 
-Currently unsupported cases include:
+Currently ignored cases:
 
-- Dictionary/subscript assignments
-- Function-call arguments
-- Return values
+- Non-string assigned values
+- Dynamic subscript keys
+- Numeric subscript indexes
+- Function call return values
+- Function call arguments
 - String concatenation
-- Environment variable loading
 - Dynamically constructed values
 - Non-Python files
 
 ---
 
-## False Positives and False Negatives
+## Confidence Scoring
 
-SentinelScan uses rule-based static analysis. It may still produce false positives or false negatives.
+SentinelScan tracks confidence separately from severity.
 
-Examples of possible false positives:
+| Signal | Meaning |
+|---|---|
+| Severity | Impact if the finding is real |
+| Confidence | Likelihood that the value is a real secret |
 
-```python
-password = "not actually a real password"
-token = "example"
+Confidence levels:
+
+```text
+LOW
+MEDIUM
+HIGH
 ```
 
-Examples of possible false negatives:
+Confidence uses:
 
-```python
-config["password"] = "abcdef"
-password = "abc" + "def"
-set_password("abcdef")
-```
+- Value length
+- Shannon entropy
+- Common/test value heuristics
+- Strong value-pattern matches
 
-Future improvements may reduce these limitations through entropy scoring, confidence scoring, additional AST node support, and data-flow analysis.
+Examples:
+
+| Value | Expected Confidence |
+|---|---|
+| `abcdef` | `LOW` |
+| `xyzttttggfdddf` | `MEDIUM` |
+| `abc1234567890j` | `HIGH` |
+| `AKIAEXAMPLE123456789` | `HIGH` |
+
+AWS access key findings are high-confidence because the pattern is specific.
 
 ---
 
-## Redaction and Detection
+## Entropy Metadata
+
+Each finding includes entropy metadata.
+
+Entropy estimates how random-looking a value is. It is used for confidence scoring and included in JSON output.
+
+---
+
+## Filtering
+
+Severity filter:
+
+```bash
+python3 main.py path/to/project --severity HIGH
+```
+
+Confidence filter:
+
+```bash
+python3 main.py path/to/project --confidence HIGH
+```
+
+Combined:
+
+```bash
+python3 main.py path/to/project --severity HIGH --confidence HIGH
+```
+
+Filtering controls displayed findings only.
+
+---
+
+## Redaction
 
 Redaction does not affect detection.
 
-The rule engine always evaluates the original extracted value. Redaction is applied later during output formatting.
-
-This means:
-
 ```text
 original value → rule engine
-redacted value → CLI/JSON output only when --redact is used
+redacted value → output only
 ```
+
+Example:
+
+```bash
+python3 main.py path/to/project --redact
+```
+
+```text
+abc1234567890j → ab**********0j
+```
+
+Short values:
+
+```text
+[REDACTED]
+```
+
+---
+
+## Suppression
+
+### `.sentinelscanignore`
+
+Skips files and directories before scanning.
+
+```text
+venv/
+__pycache__/
+test_dirs/
+*.min.py
+ignored.py
+```
+
+### Generic Inline Ignore
+
+Suppresses all findings on a line.
+
+```python
+password = "fakepassword"  # sentinelscan: ignore
+```
+
+### Rule-Specific Inline Ignore
+
+Suppresses selected rule IDs.
+
+```python
+api_key = "AKIAEXAMPLE123456789"  # sentinelscan: ignore AWS_ACCESS_KEY
+```
+
+Result:
+
+```text
+AWS_ACCESS_KEY → suppressed
+API_KEY        → still reported
+```
+
+Multiple rules:
+
+```python
+api_key = "AKIAEXAMPLE123456789"  # sentinelscan: ignore AWS_ACCESS_KEY API_KEY
+```
+
+Inline ignore markers must appear inside Python comments.
+
+This does not suppress findings:
+
+```python
+password = "sentinelscan: ignore"
+```
+
+---
+
+## False Positives and False Negatives
+
+Possible false positives:
+
+```python
+password = "not actually a real password"
+token = "example_value_123"
+client_secret = "fake_for_testing"
+```
+
+Possible false negatives:
+
+```python
+password = "abc" + "def"
+set_password("abcdef")
+return "abcdef"
+config = {"password": "abcdef"}
+password = os.getenv("PASSWORD")
+```
+
+Future improvements may reduce these through dictionary extraction, function-call extraction, constant propagation, data-flow analysis, and additional file type support.
+
+---
+
+## Current Scope
+
+SentinelScan currently focuses on:
+
+```text
+Python source files
+AST-based assignment analysis
+Hardcoded string literals
+Rule-based secret detection
+Confidence scoring
+Structured text/JSON output
+```
+
+It is not a full data-flow or taint-analysis engine yet.
