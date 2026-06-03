@@ -1,28 +1,32 @@
-from detectors.rule_engine import apply_rules
+"""
+High-level secret detection orchestration.
+
+This module connects AST candidate extraction to rule evaluation. It does not
+read files, print output, or apply suppression rules; those responsibilities
+belong to scanner and output modules.
+"""
+
 from detectors.ast_analyzer import extract_candidates
+from detectors.rule_engine import apply_rules
 
 
 def detect_ast_secrets(code):
     """
     Detect hardcoded secrets in Python source code using AST-based analysis.
 
-    Extracts candidate string assignments from source code, applies detection
-    rules, and returns confirmed findings.
-
     Args:
         code (str): Raw Python source code.
 
     Returns:
-        list[Finding]: Findings produced by matching candidates against rules.
+        list[Finding]: Findings produced by matching extracted candidates
+        against built-in rules.
     """
     findings = []
 
     for candidate in extract_candidates(code):
         vulnerabilities = apply_rules(candidate)
 
-        # Collect all rule matches for the current candidate.
         if vulnerabilities:
-            for finding in vulnerabilities:
-                findings.append(finding)
+            findings.extend(vulnerabilities)
 
     return findings

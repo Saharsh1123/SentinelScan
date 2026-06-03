@@ -11,23 +11,25 @@ SentinelScan is an educational static-analysis project focused on Python hardcod
 Current capabilities include:
 
 - Python AST parsing
-- Candidate extraction
-- Modular rule evaluation
-- Structured `Rule`, `Candidate`, and `Finding` dataclasses
-- Simple assignment detection
-- Attribute assignment detection
-- Subscript assignment detection
-- Entropy metadata
-- Confidence scoring
-- Human-readable CLI output
+- candidate extraction
+- modular rule evaluation
+- structured `Rule`, `Candidate`, and `Finding` dataclasses
+- simple assignment detection
+- annotated assignment detection
+- attribute assignment detection
+- subscript assignment detection
+- dictionary literal detection
+- entropy metadata
+- confidence scoring
+- human-readable CLI output
 - JSON output
-- Severity filtering
-- Confidence filtering
-- Secret redaction
+- severity filtering
+- confidence filtering
+- secret redaction
 - `.sentinelscanignore`
-- Generic inline ignores
-- Rule-specific inline ignores
-- Pytest test coverage
+- generic inline ignores
+- rule-specific inline ignores
+- pytest test coverage
 - Ruff linting
 - GitHub Actions CI
 
@@ -41,20 +43,19 @@ SentinelScan is intentionally scoped.
 
 Current limitations:
 
-- Only scans Python files (`.py`)
-- Only evaluates hardcoded string literal assignments
-- Does not fully analyze dictionary literals
-- Does not detect secrets passed directly into function calls
-- Does not detect secrets returned from functions
-- Does not detect secrets built through string concatenation
-- Does not follow values across variables
-- Does not analyze environment files such as `.env`
-- Does not perform multi-file data-flow analysis
-- Does not perform taint analysis
-- Does not support SARIF output yet
-- Does not support custom user-defined rules yet
-- Does not support full config-file behavior yet
-- Detection rules may still produce false positives or false negatives
+- only scans Python files (`.py`)
+- only evaluates supported hardcoded string-literal syntax
+- does not detect secrets passed directly into function calls yet
+- does not detect secrets returned from functions yet
+- does not detect secrets built through string concatenation yet
+- does not follow values across variables yet
+- does not analyze environment files such as `.env`
+- does not perform multi-file data-flow analysis
+- does not perform taint analysis
+- does not support SARIF output yet
+- does not support custom user-defined rules yet
+- does not support full config-file behavior yet
+- detection rules may still produce false positives or false negatives
 
 ---
 
@@ -83,12 +84,12 @@ This makes output more useful because a finding can be dangerous but still low-c
 
 Recommended next improvements:
 
-1. Add JSON config support
-2. Add rule disabling through config
-3. Add dictionary literal extraction
-4. Add function-call keyword argument detection
-5. Add SARIF output
-6. Add packaging support with a console script entry point
+1. Add function-call keyword argument detection
+2. Add JSON config support
+3. Add rule disabling through config
+4. Add SARIF output
+5. Add packaging support with a console script entry point
+6. Add GitHub repository scanning through clone-and-scan workflow
 
 ---
 
@@ -97,24 +98,25 @@ Recommended next improvements:
 Potential future improvements:
 
 - JSON config file support
-- Configurable default redaction
-- Configurable severity and confidence filters
-- Rule disabling by rule ID
-- Custom user-defined rules
-- Dictionary literal scanning
-- Function-call argument scanning
-- Annotated assignment support
-- String concatenation handling
-- Constant propagation
-- Additional secret patterns:
+- configurable default redaction
+- configurable severity and confidence filters
+- rule disabling by rule ID
+- custom user-defined rules
+- function-call argument scanning
+- return statement scanning
+- string concatenation handling
+- constant propagation
+- lightweight data-flow tracking
+- taint-lite source-to-sink checks
+- additional secret patterns:
   - JWTs
-  - Private keys
+  - private keys
   - GitHub tokens
   - Slack tokens
   - Google API keys
-  - Database connection strings
-  - Bearer tokens
-- Additional file types:
+  - database connection strings
+  - bearer tokens
+- additional file types:
   - `.env`
   - `.json`
   - `.yaml`
@@ -122,11 +124,11 @@ Potential future improvements:
   - generic text files
 - SARIF output
 - Markdown or HTML reports
-- Summary statistics
-- Baseline/diff scan mode
-- Pre-commit hook support
+- summary statistics
+- baseline/diff scan mode
+- pre-commit hook support
 - GitHub repository scanning
-- Benchmark fixtures for larger repositories
+- benchmark fixtures for larger repositories
 
 ---
 
@@ -134,7 +136,7 @@ Potential future improvements:
 
 Current output formats:
 
-- Human-readable text
+- human-readable text
 - JSON
 
 Potential future formats:
@@ -143,7 +145,7 @@ Potential future formats:
 - Markdown report
 - HTML report
 - CSV
-- Baseline/diff report
+- baseline/diff report
 
 ---
 
@@ -151,13 +153,13 @@ Potential future formats:
 
 Long-term, SentinelScan could evolve into a broader static-analysis learning project with:
 
-- Multi-file scanning
-- Configurable detection rules
-- Additional file type support
-- Lightweight data-flow tracking
-- Taint-analysis concepts
+- multi-file scanning
+- configurable detection rules
+- additional file type support
+- lightweight data-flow tracking
+- taint-analysis concepts
 - CI/CD integration
 - GitHub code scanning integration
-- Security-report generation
+- security-report generation
 
 The main goal is to keep improving the scanner while preserving a clean architecture, strong tests, and explainable limitations.

@@ -1,3 +1,10 @@
+"""
+Output formatting, filtering, and redaction.
+
+This module owns presentation concerns only. Detection always uses original
+secret values; redaction is applied only when rendering text or JSON output.
+"""
+
 import json
 
 
@@ -7,6 +14,12 @@ def redact_value(value):
 
     Short values are fully redacted. Longer values keep a small prefix and
     suffix so users can identify the finding without exposing the full value.
+
+    Args:
+        value (str): Original detected value.
+
+    Returns:
+        str: Redacted display value.
     """
     if not value or len(value) <= 4:
         return "[REDACTED]"
@@ -19,19 +32,25 @@ def redact_value(value):
 
 def filter_results(results, chosen_severity, chosen_confidence):
     """
-    Filter findings by severity.
+    Filter findings by optional severity and confidence selections.
 
     Args:
         results (list[Finding]): Findings returned by the scanner.
-        chosen_severity (str | None): Severity to keep, or None to keep all findings.
+        chosen_severity (str | None): Severity to keep, or None to keep all.
+        chosen_confidence (str | None): Confidence to keep, or None to keep all.
 
     Returns:
-        list[Finding]: Findings matching the selected severity.
+        list[Finding]: Findings matching the selected filters.
     """
     filtered_findings = []
 
     for finding in results:
-        if (finding.severity == chosen_severity or chosen_severity is None) and (finding.confidence == chosen_confidence or chosen_confidence is None):
+        severity_matches = finding.severity == chosen_severity or chosen_severity is None
+        confidence_matches = (
+            finding.confidence == chosen_confidence or chosen_confidence is None
+        )
+
+        if severity_matches and confidence_matches:
             filtered_findings.append(finding)
 
     return filtered_findings
@@ -40,6 +59,9 @@ def filter_results(results, chosen_severity, chosen_confidence):
 def output_json(filtered_findings, redact_secrets):
     """
     Print findings as machine-readable JSON.
+
+    JSON mode intentionally emits only JSON so the output can be consumed by
+    scripts, CI jobs, or later report generators.
 
     Args:
         filtered_findings (list[Finding]): Findings to serialize.
@@ -93,20 +115,21 @@ def output(filtered_findings, use_json, redact_secrets, files):
 
     if not filtered_findings:
         print("\nNo vulnerabilities found.")
-    else:
-        print("\n--- Findings ---\n")
+        return
 
-        for finding in filtered_findings:
-            display_value = finding.value
-            if redact_secrets:
-                display_value = redact_value(display_value)
+    print("\n--- Findings ---\n")
 
-            print(
-                f"[{finding.severity}] "
-                f"{finding.file_path}:{finding.line_number} "
-                f"{finding.rule_name} → {display_value}"
-            )
-            print(f"       Confidence: {finding.confidence}")
-            print(f"       Reason: {finding.reason}\n")
+    for finding in filtered_findings:
+        display_value = finding.value
+        if redact_secrets:
+            display_value = redact_value(display_value)
 
-        print(f"\nTotal findings: {len(filtered_findings)}")
+        print(
+            f"[{finding.severity}] "
+            f"{finding.file_path}:{finding.line_number} "
+            f"{finding.rule_name} → {display_value}"
+        )
+        print(f"       Confidence: {finding.confidence}")
+        print(f"       Reason: {finding.reason}\n")
+
+    print(f"\nTotal findings: {len(filtered_findings)}")

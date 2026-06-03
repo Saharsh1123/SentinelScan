@@ -1,3 +1,11 @@
+"""
+Shared dataclass models used by SentinelScan.
+
+The scanner uses a two-stage model:
+1. AST extraction produces `Candidate` objects.
+2. Rule evaluation converts matching candidates into `Finding` objects.
+"""
+
 from dataclasses import dataclass, field
 import re
 
@@ -5,10 +13,9 @@ import re
 @dataclass(kw_only=True, frozen=True)
 class Rule:
     """
-    Define a single detection rule used by the rule engine.
+    Define one detection rule used by the rule engine.
 
-    Rules may match either suspicious variable names, structured secret
-    values, or both.
+    Rules may match suspicious variable names, specific value formats, or both.
     """
 
     rule_id: str
@@ -23,10 +30,10 @@ class Rule:
 @dataclass(kw_only=True)
 class Candidate:
     """
-    Represent a string assignment extracted from source code.
+    Represent extracted source-code data that may be suspicious.
 
-    Candidates are not confirmed findings. They are passed to the rule engine
-    for evaluation.
+    Candidates are not confirmed vulnerabilities. They are normalized inputs for
+    the rule engine.
     """
 
     line_number: int
@@ -51,5 +58,5 @@ class Finding:
     rule_name: str
     severity: str
     reason: str
-    entropy: int | None = None
+    entropy: int | float | None = None
     confidence: str

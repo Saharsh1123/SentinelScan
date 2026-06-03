@@ -1,3 +1,10 @@
+"""
+Inline ignore support for SentinelScan findings.
+
+Inline ignores are parsed from Python comments using `tokenize`, so ignore
+markers inside string literals do not suppress findings accidentally.
+"""
+
 import io
 import tokenize
 
@@ -7,10 +14,20 @@ INLINE_IGNORE_MARKER = "sentinelscan: ignore"
 
 def finding_has_inline_ignore(line, finding):
     """
-    Return True when a source line contains a SentinelScan inline ignore comment.
+    Return True when a source line suppresses a finding.
 
-    Generic ignores suppress all findings on the line.
-    Rule-specific ignores suppress only listed rule IDs.
+    Generic ignores suppress all findings on the line:
+        # sentinelscan: ignore
+
+    Rule-specific ignores suppress only listed rule IDs:
+        # sentinelscan: ignore AWS_ACCESS_KEY API_KEY
+
+    Args:
+        line (str): Source line containing the finding.
+        finding (Finding): Finding being checked for suppression.
+
+    Returns:
+        bool: True if the finding should be ignored.
     """
     try:
         tokens = tokenize.generate_tokens(io.StringIO(line).readline)
@@ -37,5 +54,3 @@ def finding_has_inline_ignore(line, finding):
             return True
 
     return False
-    
-

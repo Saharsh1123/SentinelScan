@@ -24,14 +24,6 @@ SentinelScan recursively scans Python files (`.py`) under the provided directory
 
 ## CLI Options
 
-```text
-path
---json
---severity
---confidence
---redact
-```
-
 | Option | Type | Description |
 |---|---|---|
 | `path` | Required positional argument | Directory to scan |
@@ -40,15 +32,7 @@ path
 | `--confidence` | Choice | Show only findings matching a confidence level |
 | `--redact` | Boolean flag | Redact detected secret values in output |
 
-Supported severity values:
-
-```text
-LOW
-MEDIUM
-HIGH
-```
-
-Supported confidence values:
+Supported severity and confidence values:
 
 ```text
 LOW
@@ -74,13 +58,11 @@ Scanning 4 Python files...
 --- Findings ---
 
 [HIGH] test_dirs/test_repo/open_vulns.py:4 AWS Access Key → AKIAEXAMPLE123456789
-Confidence: [HIGH]
-Entropy: 3.91
+       Confidence: HIGH
        Reason: value matched AKIA-prefixed AWS access key pattern
 
 [MEDIUM] test_dirs/test_repo/open_vulns.py:5 Token → xyzttttggfdddf
-Confidence: [MEDIUM]
-Entropy: 3.10
+       Confidence: MEDIUM
        Reason: variable name matched token pattern and value met minimum length
 
 Total findings: 2
@@ -88,16 +70,15 @@ Total findings: 2
 
 Human-readable output includes:
 
-- Scanned file count
-- Severity
-- File path
-- Line number
-- Rule name
-- Detected or redacted value
-- Confidence
-- Entropy metadata
-- Detection reason
-- Total finding count
+- scanned file count
+- severity
+- file path
+- line number
+- rule name
+- detected or redacted value
+- confidence
+- detection reason
+- total finding count
 
 ---
 
@@ -120,10 +101,10 @@ Example:
     "rule_id": "AWS_ACCESS_KEY",
     "rule": "AWS Access Key",
     "severity": "HIGH",
-    "confidence": "HIGH",
-    "entropy": 3.91,
     "value": "AKIAEXAMPLE123456789",
-    "reason": "value matched AKIA-prefixed AWS access key pattern"
+    "reason": "value matched AKIA-prefixed AWS access key pattern",
+    "entropy": 3.91,
+    "confidence": "HIGH"
   }
 ]
 ```
@@ -137,15 +118,15 @@ JSON mode prints only valid JSON. It does not print scan headers, summaries, or 
 | Field | Description |
 |---|---|
 | `line` | Source line number |
-| `var_name` | Extracted variable, attribute, or subscript key |
+| `var_name` | Extracted variable, attribute, subscript key, or dictionary key |
 | `file` | File path |
 | `rule_id` | Stable machine-readable rule ID |
 | `rule` | Human-readable rule name |
 | `severity` | Finding severity |
-| `confidence` | Likelihood that the finding is a real secret |
-| `entropy` | Entropy score for the detected value |
 | `value` | Detected value or redacted value |
 | `reason` | Explanation for why the rule matched |
+| `entropy` | Entropy score for the detected value |
+| `confidence` | Likelihood that the finding is a real secret |
 
 ---
 
@@ -188,14 +169,6 @@ Severity   = impact if real
 Confidence = likelihood the value is a real secret
 ```
 
-Example:
-
-```bash
-python3 main.py test_dirs --json --severity HIGH --confidence HIGH
-```
-
-This shows only findings that are both `HIGH` severity and `HIGH` confidence.
-
 ---
 
 ## Secret Redaction
@@ -212,8 +185,7 @@ Redaction is useful when sharing scan output.
 
 ```text
 [HIGH] test_dirs/test_repo/example.py:1 Password → a****f
-Confidence: [LOW]
-Entropy: 2.58
+       Confidence: LOW
        Reason: variable name matched password/pwd/passwd pattern and value met minimum length
 ```
 
@@ -249,19 +221,11 @@ python3 main.py test_dirs --json --redact
 | `abc_def-123#$%^&*()` | `ab***************()` |
 | `AKIAEXAMPLE123456789` | `AK****************89` |
 
-Redaction notes:
-
-- Empty or very short values are fully redacted.
-- Medium values preserve limited prefix/suffix context.
-- Longer values preserve the first two and last two characters.
-- Redaction happens only during output formatting.
-- Detection still uses the original extracted value.
+Redaction happens only during output formatting. Detection always uses the original extracted value.
 
 ---
 
 ## Combined Flags
-
-SentinelScan supports combining output format, filtering, and redaction.
 
 ```bash
 python3 main.py test_dirs --json --severity HIGH --confidence HIGH --redact
@@ -269,17 +233,15 @@ python3 main.py test_dirs --json --severity HIGH --confidence HIGH --redact
 
 This command:
 
-1. Scans `test_dirs`
-2. Keeps only `HIGH` severity findings
-3. Keeps only `HIGH` confidence findings
-4. Redacts detected values
-5. Outputs valid JSON
+1. scans `test_dirs`
+2. keeps only `HIGH` severity findings
+3. keeps only `HIGH` confidence findings
+4. redacts detected values
+5. outputs valid JSON
 
 ---
 
 ## Supported Detection Examples
-
-SentinelScan detects hardcoded string values in supported assignment patterns.
 
 ### Simple Assignments
 
@@ -287,6 +249,13 @@ SentinelScan detects hardcoded string values in supported assignment patterns.
 password = "abcdef"
 api_key = "abc1234567890j"
 token = "abc1234567890j"
+```
+
+### Annotated Assignments
+
+```python
+password: str = "abcdef"
+api_key: str = "abc1234567890j"
 ```
 
 ### Attribute Assignments
@@ -304,6 +273,15 @@ settings["api_key"] = "abc1234567890j"
 config["auth"]["token"] = "abc1234567890j"
 ```
 
+### Dictionary Literals
+
+```python
+config = {
+    "password": "abcdef",
+    "api_key": "abc1234567890j",
+}
+```
+
 Unsupported examples:
 
 ```python
@@ -311,6 +289,7 @@ password = "abc" + "def"
 password = os.getenv("PASSWORD")
 config[dynamic_key] = "abcdef"
 items[0] = "abcdef"
+set_password("abcdef")
 ```
 
 ---
@@ -318,8 +297,6 @@ items[0] = "abcdef"
 ## `.sentinelscanignore`
 
 Use `.sentinelscanignore` to skip files or directories before scanning.
-
-Example:
 
 ```text
 venv/
@@ -331,26 +308,12 @@ ignored.py
 
 Supported behavior:
 
-- Blank lines are ignored
-- Comment lines are ignored
-- Directory patterns are supported
-- Filename patterns are supported
-- Glob patterns are supported
-- Parent `.sentinelscanignore` files can apply to child scan paths
-
-Example:
-
-```bash
-python3 main.py .
-```
-
-If `.sentinelscanignore` contains:
-
-```text
-test_dirs/
-```
-
-then files inside `test_dirs/` are skipped.
+- blank lines are ignored
+- comment lines are ignored
+- directory patterns are supported
+- filename patterns are supported
+- glob patterns are supported
+- parent `.sentinelscanignore` files can apply to child scan paths
 
 ---
 
@@ -358,33 +321,23 @@ then files inside `test_dirs/` are skipped.
 
 Inline ignores suppress findings on specific source lines.
 
-### Generic Inline Ignore
+Generic inline ignore:
 
 ```python
 password = "fakepassword"  # sentinelscan: ignore
 ```
 
-Suppresses all findings on that line.
-
-### Rule-Specific Inline Ignore
+Rule-specific inline ignore:
 
 ```python
 api_key = "AKIAEXAMPLE123456789"  # sentinelscan: ignore AWS_ACCESS_KEY
 ```
-
-Suppresses only the listed rule ID.
 
 In this example:
 
 ```text
 AWS_ACCESS_KEY → suppressed
 API_KEY        → still reported
-```
-
-Suppress multiple rules:
-
-```python
-api_key = "AKIAEXAMPLE123456789"  # sentinelscan: ignore AWS_ACCESS_KEY API_KEY
 ```
 
 Inline ignore markers must appear inside Python comments. This does not suppress findings:
@@ -426,19 +379,3 @@ Example output:
 ```
 
 Invalid option values are rejected by `argparse`.
-
-```bash
-python3 main.py test_dirs --severity CRITICAL
-```
-
-```text
-invalid choice
-```
-
----
-
-## Current Scope
-
-SentinelScan currently scans Python files and evaluates hardcoded string literal assignments.
-
-It is not currently a full data-flow or taint-analysis engine.

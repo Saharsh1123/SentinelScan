@@ -1,3 +1,11 @@
+"""
+AST-based candidate extraction for SentinelScan.
+
+This module translates supported Python syntax into normalized `Candidate`
+objects. It does not decide whether a candidate is a vulnerability; that is the
+rule engine's job.
+"""
+
 import ast
 import textwrap
 
@@ -8,8 +16,8 @@ def parse_ast(file):
     """
     Parse Python source code into an AST.
 
-    Dedents source first so indented multiline test strings can be parsed
-    consistently.
+    Dedenting keeps multiline test strings parseable without affecting normal
+    files. Syntax errors are ignored so one invalid file does not crash a scan.
 
     Args:
         file (str): Raw Python source code.
@@ -42,15 +50,38 @@ def get_assignments(tree):
             yield node
 
 
+def get_function_calls(tree):
+    """
+    Yield function call nodes from a parsed AST.
+
+    This includes standalone calls and calls used inside larger expressions.
+
+    Args:
+        tree (ast.AST): Parsed syntax tree.
+
+    Yields:
+        ast.Call: Function call nodes found during traversal.
+    """
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call):
+            yield node
+
+
 def extract_candidates_from_dict(dict_node):
     """
     Yield candidates from string key/value pairs in a dictionary literal.
 
     Example:
-        {"password": "abcdef"}
+        config = {"password": "abcdef"}
 
     Produces:
         Candidate(var_name="password", value="abcdef", line_number=...)
+
+    Args:
+        dict_node (ast.Dict): Dictionary literal node.
+
+    Yields:
+        Candidate: Candidate generated from a string dictionary key/value pair.
     """
     for key_node, value_node in zip(dict_node.keys, dict_node.values):
         if key_node is None:
@@ -68,6 +99,42 @@ def extract_candidates_from_dict(dict_node):
             line_number=getattr(value_node, "lineno", getattr(dict_node, "lineno", 0)),
             var_name=key_node.value.lower(),
             value=value_node.value,
+        )
+
+
+def extract_candidates_from_function_call(call_node):
+    """
+    Yield candidates from string keyword arguments in a function call.
+
+    Example:
+        connect(password="abcdef")
+
+    Produces:
+        Candidate(var_name="password", value="abcdef", line_number=...)
+
+    Positional arguments and **kwargs are ignored because they do not provide a
+    clear secret-related name for the rule engine.
+
+    Args:
+        call_node (ast.Call): Function call node.
+
+    Yields:
+        Candidate: Candidate generated from a string keyword argument.
+    """
+    for keyword in call_node.keywords:
+        if keyword.arg is None:
+            continue
+
+        if not (
+            isinstance(keyword.value, ast.Constant)
+            and isinstance(keyword.value.value, str)
+        ):
+            continue
+
+        yield Candidate(
+            line_number=getattr(keyword.value, "lineno", getattr(call_node, "lineno", 0)),
+            var_name=keyword.arg.lower(),
+            value=keyword.value.value,
         )
 
 
@@ -187,9 +254,11 @@ def extract_candidates(code):
     Supports:
     - normal string assignments
     - annotated string assignments
+    - string subscript assignments
     - dictionary literals with string key/value pairs
+    - function calls with string keyword arguments
 
-    Syntax errors and unsupported assignment shapes are ignored.
+    Syntax errors and unsupported syntax shapes are ignored.
 
     Args:
         code (str): Raw Python source code.
@@ -211,3 +280,6 @@ def extract_candidates(code):
             continue
 
         yield from extract_assignment_candidates(node, value)
+
+    for call_node in get_function_calls(tree):
+        yield from extract_candidates_from_function_call(call_node)

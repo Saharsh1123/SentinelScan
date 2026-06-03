@@ -1,7 +1,8 @@
 """
-CLI argument configuration for SentinelScan.
+Command-line argument parsing for SentinelScan.
 
-Parses the target scan path and optional output controls.
+This module defines the user-facing CLI flags and returns parsed arguments to
+`main.py`. It should not start a scan or depend on scanner internals.
 """
 
 import argparse
@@ -38,5 +39,12 @@ parser.add_argument(
     help="Redact detected secret values",
 )
 
+
 def return_args():
+    """
+    Parse and return CLI arguments.
+
+    Returns:
+        argparse.Namespace: Parsed CLI options used by the application entry point.
+    """
     return parser.parse_args()

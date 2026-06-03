@@ -1,5 +1,14 @@
+"""
+Entropy and confidence scoring helpers.
+
+Severity describes impact if a finding is real. Confidence describes how likely
+it is that the detected value is a real secret. These helpers provide lightweight
+heuristics for confidence scoring without changing detection behavior.
+"""
+
 from collections import Counter
 import math
+
 
 COMMON_LOW_CONFIDENCE_VALUES = {
     "password",
@@ -20,7 +29,17 @@ COMMON_LOW_CONFIDENCE_VALUES = {
     "password123",
 }
 
+
 def calculate_entropy(value):
+    """
+    Calculate Shannon entropy for a string value.
+
+    Args:
+        value (str): Value to score.
+
+    Returns:
+        float: Entropy score. Empty values return 0.0.
+    """
     if not value:
         return 0.0
 
@@ -34,7 +53,21 @@ def calculate_entropy(value):
 
     return entropy
 
+
 def calculate_confidence(value):
+    """
+    Estimate whether a detected value is likely to be a real secret.
+
+    Confidence uses simple heuristics: known placeholder values, length, and
+    entropy. Specific value-pattern rules, such as AWS keys, may override this
+    in the rule engine.
+
+    Args:
+        value (str): Detected value.
+
+    Returns:
+        str: One of LOW, MEDIUM, or HIGH.
+    """
     entropy = calculate_entropy(value)
 
     if value.lower() in COMMON_LOW_CONFIDENCE_VALUES:

@@ -2,50 +2,46 @@
 
 SentinelScan is a Python CLI static-analysis tool that scans Python codebases for hardcoded secrets.
 
-It uses Python AST parsing to inspect real assignment statements, extracts candidate values, applies a modular rule engine, and reports findings with structured metadata such as rule ID, severity, reason, variable name, file path, and line number.
+It uses Python AST parsing to extract candidate values from supported assignment patterns, applies a modular rule engine, and reports findings with structured metadata such as file path, line number, rule ID, severity, confidence, reason, variable name, and detected value.
 
-SentinelScan is a lightweight, learning-focused static-analysis project. It demonstrates AST parsing, modular rule evaluation, structured findings, CLI output, JSON output, redaction, testing, linting, and CI.
-
-> SentinelScan is not a replacement for mature secret-scanning tools. It is an educational static-analysis project intended to build and demonstrate security engineering concepts.
+> SentinelScan is a learning-focused static-analysis project. It is not a replacement for mature secret-scanning tools such as GitHub secret scanning, Gitleaks, TruffleHog, Semgrep, or CodeQL.
 
 ---
 
 ## Features
 
-- Recursively scans directories for Python files (`.py`)
-- Uses Python AST parsing to analyze real assignment statements
-- Extracts candidates from source code before rule evaluation
-- Uses structured dataclass models:
+- Recursively scans Python files (`.py`) under a target directory
+- Supports `.sentinelscanignore` file-level suppression
+- Supports generic and rule-specific inline ignores
+- Uses AST-based candidate extraction instead of raw line scanning
+- Extracts candidates from:
+  - simple assignments
+  - annotated assignments
+  - attribute assignments
+  - nested attribute assignments
+  - subscript assignments with string keys
+  - dictionary literals with string key/value pairs
+  - multiple assignment targets
+- Uses a modular rule engine with structured dataclasses:
   - `Rule`
   - `Candidate`
   - `Finding`
-- Uses a modular rule engine for scalable detection logic
-- Detects hardcoded secrets assigned to:
-  - Simple variables
-  - Object attributes
-  - Nested attributes
-  - Multiple assignment targets
-- Detects common secret types:
-  - Passwords
+- Detects common hardcoded secret categories:
+  - passwords
   - API keys
-  - Tokens
+  - tokens
+  - generic secrets
   - AWS access keys
-  - Generic secrets
-- Supports value-pattern-based detection for structured secrets such as AWS access keys
-- Supports variable-name-based detection for names such as `password`, `pwd`, `passwd`, `api_key`, `apikey`, `token`, and `secret`
+- Supports value-pattern detection for structured values such as AWS access keys
+- Supports variable-name detection for names such as `password`, `pwd`, `passwd`, `api_key`, `apikey`, `token`, and `secret`
 - Applies minimum-length filtering to reduce obvious false positives
-- Assigns severity levels such as `HIGH` and `MEDIUM`
-- Provides detection reasons explaining why each finding was flagged
-- Supports human-readable CLI output
+- Calculates entropy and confidence metadata
+- Supports human-readable text output
 - Supports machine-readable JSON output with `--json`
 - Supports severity filtering with `--severity`
-- Supports secret redaction with `--redact`
-- Supports combined flags such as `--json --severity HIGH --redact`
-- Handles syntax errors gracefully
-- Handles file encoding issues using UTF-8 with ignored decode errors
-- Includes pytest-based unit and CLI tests
-- Uses Ruff for linting/code quality
-- Uses GitHub Actions CI to run automated checks
+- Supports confidence filtering with `--confidence`
+- Supports output redaction with `--redact`
+- Includes pytest unit tests, CLI tests, Ruff checks, and GitHub Actions CI
 
 ---
 
@@ -53,28 +49,26 @@ SentinelScan is a lightweight, learning-focused static-analysis project. It demo
 
 - Python 3.11+
 - `pytest` for testing
-- `ruff` for linting and formatting
+- `ruff` for linting/formatting
 - No third-party runtime dependencies
 
 ---
 
 ## Installation
 
-Clone the repository:
-
 ```bash
 git clone https://github.com/Saharsh1123/SentinelScan.git
 cd SentinelScan
 ```
 
-Optional: create and activate a virtual environment.
+Optional virtual environment:
 
 ```bash
 python3 -m venv venv
 source venv/bin/activate
 ```
 
-Install test/development dependencies:
+Install development tools:
 
 ```bash
 python3 -m pip install pytest ruff
@@ -90,7 +84,7 @@ Scan a directory:
 python3 main.py ./your_directory
 ```
 
-Scan the included test fixture directory:
+Scan the included fixture directory:
 
 ```bash
 python3 main.py test_dirs
@@ -108,84 +102,75 @@ Filter by severity:
 python3 main.py test_dirs --severity HIGH
 ```
 
+Filter by confidence:
+
+```bash
+python3 main.py test_dirs --confidence HIGH
+```
+
 Redact detected values:
 
 ```bash
 python3 main.py test_dirs --redact
 ```
 
-Use JSON, severity filtering, and redaction together:
+Combine options:
 
 ```bash
-python3 main.py test_dirs --json --severity HIGH --redact
+python3 main.py test_dirs --json --severity HIGH --confidence HIGH --redact
 ```
-
-For full usage documentation, see [`docs/USAGE.md`](docs/USAGE.md).
 
 ---
 
-## Example CLI Output
-
-```bash
-python3 main.py test_dirs
-```
+## Example Text Output
 
 ```text
 Scanning 4 Python files...
 
 --- Findings ---
 
-[HIGH] test_dirs/edge_repo/edge_test.py:1 Password → hjkl
-       Reason: variable name matched password/pwd/passwd pattern and value met minimum length
-
 [HIGH] test_dirs/test_repo/open_vulns.py:4 AWS Access Key → AKIAEXAMPLE123456789
+       Confidence: HIGH
        Reason: value matched AKIA-prefixed AWS access key pattern
 
-[MEDIUM] test_dirs/test_repo/open_vulns.py:5 Token → xyzttttggfdddf
-       Reason: variable name matched token pattern and value met minimum length
-
-Total findings: 6
+Total findings: 1
 ```
 
 ---
 
 ## Example JSON Output
 
-```bash
-python3 main.py test_dirs --json
-```
-
 ```json
 [
   {
-    "line": 1,
-    "file": "test_dirs/edge_repo/edge_test.py",
-    "var_name": "password",
-    "rule_id": "PASSWORD",
-    "rule": "Password",
+    "line": 4,
+    "var_name": "random_var",
+    "file": "test_dirs/test_repo/open_vulns.py",
+    "rule_id": "AWS_ACCESS_KEY",
+    "rule": "AWS Access Key",
     "severity": "HIGH",
-    "value": "hjkl",
-    "reason": "variable name matched password/pwd/passwd pattern and value met minimum length"
+    "value": "AKIAEXAMPLE123456789",
+    "reason": "value matched AKIA-prefixed AWS access key pattern",
+    "entropy": 3.91,
+    "confidence": "HIGH"
   }
 ]
 ```
 
-JSON mode prints only valid JSON, without CLI headers, summaries, or human-readable formatting.
+JSON mode prints only valid JSON, without human-readable scan headers or summaries.
 
 ---
 
 ## Documentation
 
-Detailed documentation is split into separate files:
-
 | Document | Purpose |
 |---|---|
-| [`docs/USAGE.md`](docs/USAGE.md) | CLI flags, examples, JSON output, redaction, and severity filtering |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Project pipeline, module responsibilities, and dataclass model flow |
-| [`docs/DETECTION_RULES.md`](docs/DETECTION_RULES.md) | Built-in rules, assignment support, detection reasons, and limitations |
-| [`docs/TESTING.md`](docs/TESTING.md) | Test coverage, pytest usage, CLI tests, and CI behavior |
-| [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) | Setup, Ruff, local checks, project structure, and contribution workflow |
-| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Current limitations and future improvements |
+| [`docs/USAGE.md`](docs/USAGE.md) | CLI flags, examples, JSON output, redaction, and filtering |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Pipeline, module responsibilities, and data-model flow |
+| [`docs/DETECTION_RULES.md`](docs/DETECTION_RULES.md) | Built-in rules, supported syntax, confidence scoring, and limitations |
+| [`docs/TESTING.md`](docs/TESTING.md) | Test layout, pytest usage, CLI tests, and CI behavior |
+| [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) | Setup, Ruff, local checks, and development workflow |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Current limitations and planned improvements |
 
 ---
 
@@ -193,59 +178,37 @@ Detailed documentation is split into separate files:
 
 ```text
 SENTINELSCAN/
-├── .github/
-│   └── workflows/
-│       └── tests.yaml              # GitHub Actions workflow for Ruff and pytest
+├── .github/workflows/tests.yaml
 ├── detectors/
-│   ├── __init__.py                 # Makes detectors an importable package
-│   ├── ast_analyzer.py             # AST parsing and candidate extraction
-│   ├── find_secrets.py             # High-level detection orchestration
-│   ├── models.py                   # Rule, Candidate, and Finding dataclasses
-│   ├── rule_engine.py              # Applies rules to candidates
-│   └── rules.py                    # Built-in rule definitions
+│   ├── ast_analyzer.py
+│   ├── confidence.py
+│   ├── find_secrets.py
+│   ├── models.py
+│   ├── rule_engine.py
+│   └── rules.py
+├── docs/
 ├── test_dirs/
-│   ├── edge_repo/
-│   │   └── edge_test.py            # Edge-case fixture file
-│   └── test_repo/
-│       ├── embedded_test/
-│       │   └── embedded_hello.py   # Nested fixture file
-│       ├── hello.py                # Benign fixture file
-│       └── open_vulns.py           # Fixture file containing sample vulnerabilities
 ├── tests/
-│   ├── test_apply_rules.py         # Unit tests for rule engine behavior
-│   ├── test_ast.py                 # Tests for AST-based detection
-│   └── test_cli.py                 # CLI integration tests
-├── .gitignore
-├── cli.py                          # CLI argument parsing
-├── LICENSE
-├── main.py                         # Application entry point
-├── output.py                       # JSON/text output formatting, filtering, and redaction
-├── pytest.ini                      # Pytest import path configuration
-├── README.md                       # Project overview
-└── scanner.py                      # Path validation, file discovery, file reading, and scan orchestration
+│   ├── test_ast/
+│   └── test_cli/
+├── cli.py
+├── ignore.py
+├── inline_ignore.py
+├── main.py
+├── output.py
+├── scanner.py
+└── pytest.ini
 ```
 
-Generated local files such as `__pycache__/`, `.pytest_cache/`, `.ruff_cache/`, and `venv/` may appear during development but should not be committed.
+Generated local files such as `__pycache__/`, `.pytest_cache/`, `.ruff_cache/`, and `venv/` should not be committed.
 
 ---
 
 ## Testing and Linting
 
-Run tests:
-
 ```bash
 pytest
-```
-
-Run Ruff:
-
-```bash
 ruff check .
-```
-
-Format code:
-
-```bash
 ruff format .
 ```
 
@@ -256,8 +219,7 @@ ruff check .
 pytest
 python3 main.py test_dirs
 python3 main.py test_dirs --json
-python3 main.py test_dirs --json --severity HIGH
-python3 main.py test_dirs --json --severity HIGH --redact
+python3 main.py test_dirs --json --severity HIGH --confidence HIGH --redact
 ```
 
 ---
@@ -265,12 +227,13 @@ python3 main.py test_dirs --json --severity HIGH --redact
 ## Current Limitations
 
 - Only scans Python files (`.py`)
-- Only analyzes assignment statements supported by the current AST logic
-- Does not currently support dictionary/subscript assignments such as `config["password"] = "value"`
-- Does not currently detect secrets passed directly into function calls
-- Does not currently perform entropy scoring, confidence scoring, data-flow analysis, or taint analysis
-- Detection rules may still produce false positives or false negatives
-- Redaction is optional, so use `--redact` when sharing scan output
+- Only evaluates supported hardcoded string-literal patterns
+- Does not detect secrets passed directly into function calls yet
+- Does not detect secrets returned from functions yet
+- Does not follow values across variables yet
+- Does not scan `.env`, JSON, YAML, TOML, or generic text files yet
+- Does not perform multi-file data-flow analysis or taint analysis yet
+- Detection rules can still produce false positives or false negatives
 
 For more detail, see [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
@@ -278,5 +241,4 @@ For more detail, see [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## License
 
-This project is for educational and demonstration purposes.
-
+MIT License. See [`LICENSE`](LICENSE).

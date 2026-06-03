@@ -8,23 +8,11 @@ SentinelScan uses only Python standard-library modules at runtime. Development t
 
 ## Local Setup
 
-Clone the repository:
-
 ```bash
 git clone https://github.com/Saharsh1123/SentinelScan.git
 cd SentinelScan
-```
-
-Create and activate a virtual environment:
-
-```bash
 python3 -m venv venv
 source venv/bin/activate
-```
-
-Install development dependencies:
-
-```bash
 python3 -m pip install pytest ruff
 ```
 
@@ -40,45 +28,13 @@ ruff --version
 
 ## Running SentinelScan
 
-Scan a directory:
-
 ```bash
 python3 main.py ./your_directory
-```
-
-Scan fixtures:
-
-```bash
 python3 main.py test_dirs
-```
-
-JSON output:
-
-```bash
 python3 main.py test_dirs --json
-```
-
-Severity filter:
-
-```bash
 python3 main.py test_dirs --severity HIGH
-```
-
-Confidence filter:
-
-```bash
 python3 main.py test_dirs --confidence HIGH
-```
-
-Redaction:
-
-```bash
 python3 main.py test_dirs --redact
-```
-
-Combined options:
-
-```bash
 python3 main.py test_dirs --json --severity HIGH --confidence HIGH --redact
 ```
 
@@ -114,12 +70,6 @@ Run all tests:
 pytest
 ```
 
-Run a specific file:
-
-```bash
-pytest tests/test_confidence.py
-```
-
 Run a folder:
 
 ```bash
@@ -130,7 +80,7 @@ pytest tests/test_cli
 Run one test:
 
 ```bash
-pytest tests/test_ast/test_ast_subscripts.py::test_ast_subscript_password_assignment
+pytest tests/test_ast/test_ast_dict_literals.py::test_ast_dict_literal_password_key
 ```
 
 Quiet mode:
@@ -171,7 +121,7 @@ git commit -m "your commit message"
 git push
 ```
 
-Recommended commit prefixes:
+Recommended prefixes:
 
 ```text
 feat: user-facing feature
@@ -186,11 +136,9 @@ chore: maintenance
 Examples:
 
 ```bash
-git commit -m "feat: add confidence filtering"
-git commit -m "feat: add sentinelscanignore support"
-git commit -m "refactor: split CLI tests by responsibility"
-git commit -m "test: add subscript assignment coverage"
-git commit -m "docs: update architecture documentation"
+git commit -m "feat: detect secrets in dictionary literals"
+git commit -m "refactor: split per-file scanning logic"
+git commit -m "docs: update detection rule documentation"
 ```
 
 ---
@@ -201,7 +149,7 @@ Use small, focused changes.
 
 ```text
 1. Pick one behavior
-2. Add or update a focused test
+2. Add or update focused tests
 3. Run the targeted test
 4. Implement the change
 5. Run the targeted test again
@@ -209,10 +157,10 @@ Use small, focused changes.
 7. Run Ruff
 8. Manually test CLI behavior if needed
 9. Update relevant docs
-10. Commit
+10. Commit implementation + tests together when practical
 ```
 
-Avoid mixing unrelated feature, refactor, test, and documentation changes in one commit.
+Avoid mixing unrelated features, refactors, and documentation changes in one commit.
 
 ---
 
@@ -221,23 +169,25 @@ Avoid mixing unrelated feature, refactor, test, and documentation changes in one
 SentinelScan currently includes:
 
 - AST-based Python scanning
-- Simple assignment detection
-- Attribute assignment detection
-- Subscript assignment detection
-- Modular rule engine
-- Structured dataclass models
-- Entropy metadata
-- Confidence scoring
-- Text and JSON output
-- Severity filtering
-- Confidence filtering
-- Redaction
+- simple assignment detection
+- annotated assignment detection
+- attribute assignment detection
+- subscript assignment detection
+- dictionary literal detection
+- modular rule engine
+- structured dataclass models
+- entropy metadata
+- confidence scoring
+- text and JSON output
+- severity filtering
+- confidence filtering
+- redaction
 - `.sentinelscanignore`
-- Generic inline ignores
-- Rule-specific inline ignores
+- generic inline ignores
+- rule-specific inline ignores
 - Ruff linting
-- Pytest coverage
-- GitHub Actions test workflow
+- pytest coverage
+- GitHub Actions CI
 
 ---
 
@@ -254,12 +204,6 @@ SENTINELSCAN/
 │   ├── rule_engine.py
 │   └── rules.py
 ├── docs/
-│   ├── ARCHITECTURE.md
-│   ├── DETECTION_RULES.md
-│   ├── DEVELOPMENT.md
-│   ├── ROADMAP.md
-│   ├── TESTING.md
-│   └── USAGE.md
 ├── test_dirs/
 ├── tests/
 │   ├── test_ast/
@@ -268,7 +212,8 @@ SENTINELSCAN/
 │   ├── test_apply_rules.py
 │   ├── test_confidence.py
 │   ├── test_ignore.py
-│   └── test_inline_ignore.py
+│   ├── test_inline_ignore.py
+│   └── test_scanner.py
 ├── .sentinelscanignore
 ├── cli.py
 ├── ignore.py
@@ -302,27 +247,14 @@ Generated files such as `__pycache__/`, `.pytest_cache/`, `.ruff_cache/`, `.vsco
 
 ---
 
-## Testing Map
-
-| Feature Type | Test Location |
-|---|---|
-| Rule engine behavior | `tests/test_apply_rules.py` |
-| Confidence behavior | `tests/test_confidence.py` |
-| AST extraction | `tests/test_ast/` |
-| CLI behavior | `tests/test_cli/` |
-| Ignore file behavior | `tests/test_ignore.py` |
-| Inline ignore behavior | `tests/test_inline_ignore.py` |
-
-Add tests with every feature change.
-
----
-
 ## Architecture Guidelines
 
 - Detection should use original values.
 - Redaction should happen only in the output layer.
 - File path handling should stay in the scanner layer.
 - AST extraction should not depend on filesystem paths.
+- Candidate extraction should produce `Candidate` objects, not findings.
+- Rule evaluation should produce `Finding` objects, not output text.
 - `.sentinelscanignore` should remain a plain text pattern file.
 - Inline ignores should suppress findings after detection.
 - JSON output should remain machine-readable and free of human-readable scan text.

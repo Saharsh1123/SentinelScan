@@ -1,22 +1,22 @@
 # Detection Rules
 
-This document explains SentinelScan's rule engine, built-in rules, supported assignment patterns, detection reasons, confidence scoring, and limitations.
+This document explains SentinelScan's rule engine, built-in rules, supported syntax, confidence scoring, suppression behavior, and current limitations.
 
 ---
 
 ## Detection Flow
 
 ```text
-Candidate → apply rules → Finding
+AST syntax → Candidate → Rule engine → Finding
 ```
+
+The AST analyzer extracts candidates. The rule engine evaluates candidates with built-in rules and returns structured findings.
 
 Rules can match using:
 
-1. Variable name patterns
-2. Value patterns
-3. Minimum value length
-
-The AST analyzer extracts candidates. The rule engine evaluates candidates and returns structured findings.
+1. variable-name patterns
+2. value patterns
+3. minimum value length
 
 ---
 
@@ -34,7 +34,7 @@ The AST analyzer extracts candidates. The rule engine evaluates candidates and r
 
 ## Variable-Name Detection
 
-These rules match suspicious variable names when the assigned string value meets the minimum length.
+These rules match suspicious names when the extracted string value meets the minimum length.
 
 ```python
 password = "abcdef"
@@ -44,15 +44,6 @@ api_key = "12345678"
 apikey = "12345678"
 token = "qwerty123"
 client_secret = "abcdef"
-```
-
-Supported forms:
-
-```python
-self.password = "abcdef"
-self.config.db.password = "abcdef"
-config["password"] = "abcdef"
-settings["api_key"] = "abc1234567890j"
 ```
 
 Short values are ignored:
@@ -65,19 +56,19 @@ password = "abc"
 
 ## Value-Pattern Detection
 
-Some rules match the value itself.
+Some rules match the value itself, regardless of variable name.
 
 ```python
 random_var = "AKIAEXAMPLE123456789"
 ```
 
-This can be flagged as `AWS_ACCESS_KEY` even if the variable name is not suspicious.
+This can be flagged as `AWS_ACCESS_KEY` even if `random_var` is not suspicious.
 
 ---
 
 ## Multiple Classifications
 
-One assignment can trigger multiple rules.
+One candidate can trigger multiple rules.
 
 ```python
 api_key = "AKIAEXAMPLE123456789"
@@ -92,8 +83,95 @@ API_KEY
 
 Reasons:
 
-- The value matches the AWS access key pattern
-- The variable name matches the API key pattern
+- The value matches the AWS access key pattern.
+- The variable name matches the API key pattern.
+
+---
+
+## Supported Syntax
+
+### Simple Assignments
+
+```python
+password = "abcdef"
+api_key = "abc1234567890j"
+token = "abc1234567890j"
+secret = "abcdef"
+```
+
+### Annotated Assignments
+
+```python
+password: str = "abcdef"
+api_key: str = "abc1234567890j"
+```
+
+Bare annotations without assigned values are ignored:
+
+```python
+password: str
+```
+
+### Attribute Assignments
+
+```python
+self.password = "abcdef"
+config.api_key = "abc1234567890j"
+settings.auth.credentials.api_key = "abc1234567890j"
+```
+
+The final attribute name is used.
+
+### Subscript Assignments
+
+```python
+config["password"] = "abcdef"
+settings["api_key"] = "abc1234567890j"
+secrets["token"] = "abc1234567890j"
+config["auth"]["password"] = "abcdef"
+```
+
+The final string key is used.
+
+Unsupported subscript examples:
+
+```python
+config[password_key] = "abcdef"
+items[0] = "abcdef"
+```
+
+These are ignored because the key is not a string literal.
+
+### Dictionary Literals
+
+```python
+config = {
+    "password": "abcdef",
+    "api_key": "abc1234567890j",
+    "token": "abc1234567890j",
+}
+```
+
+For dictionary literals, the string key becomes the candidate name and the string value becomes the candidate value.
+
+Unsupported dictionary entries:
+
+```python
+config = {password_key: "abcdef"}
+config = {"password": 123456}
+```
+
+These are ignored because the key or value is not a string literal.
+
+### Multiple Targets
+
+```python
+a = password = "abcdef"
+password = token = "abcdef"
+config["password"] = settings["token"] = "abcdef"
+```
+
+Each supported target can produce a candidate.
 
 ---
 
@@ -110,83 +188,6 @@ variable name matched secret pattern and value met minimum length
 ```
 
 Reasons are included in text and JSON output.
-
----
-
-## Supported Assignment Patterns
-
-### Simple Variables
-
-```python
-password = "abcdef"
-api_key = "12345678"
-token = "abc1234567890j"
-secret = "abcdef"
-```
-
-### Attributes
-
-```python
-self.password = "abcdef"
-config.api_key = "12345678"
-user.token = "abc1234567890j"
-```
-
-### Nested Attributes
-
-```python
-self.config.db.password = "abcdef"
-settings.auth.credentials.api_key = "12345678"
-```
-
-The final attribute name is used.
-
-### Subscripts
-
-```python
-config["password"] = "abcdef"
-settings["api_key"] = "abc1234567890j"
-secrets["token"] = "abc1234567890j"
-config["auth"]["password"] = "abcdef"
-```
-
-The final string key is used.
-
-### Multiple Targets
-
-```python
-a = password = "abcdef"
-password = token = "abcdef"
-config["password"] = settings["token"] = "abcdef"
-```
-
-Each sensitive target can produce a finding.
-
----
-
-## Ignored Patterns
-
-SentinelScan ignores unsupported or low-signal patterns.
-
-```python
-password = 123456
-config[password_key] = "abcdef"
-items[0] = "abcdef"
-password = os.getenv("PASSWORD")
-password = input("Enter password: ")
-password = "abc" + "def"
-```
-
-Currently ignored cases:
-
-- Non-string assigned values
-- Dynamic subscript keys
-- Numeric subscript indexes
-- Function call return values
-- Function call arguments
-- String concatenation
-- Dynamically constructed values
-- Non-Python files
 
 ---
 
@@ -209,10 +210,10 @@ HIGH
 
 Confidence uses:
 
-- Value length
+- value length
 - Shannon entropy
-- Common/test value heuristics
-- Strong value-pattern matches
+- common/test value heuristics
+- strong value-pattern matches
 
 Examples:
 
@@ -223,15 +224,13 @@ Examples:
 | `abc1234567890j` | `HIGH` |
 | `AKIAEXAMPLE123456789` | `HIGH` |
 
-AWS access key findings are high-confidence because the pattern is specific.
+AWS access key findings are high-confidence because the value pattern is specific.
 
 ---
 
 ## Entropy Metadata
 
-Each finding includes entropy metadata.
-
-Entropy estimates how random-looking a value is. It is used for confidence scoring and included in JSON output.
+Each finding includes entropy metadata. Entropy estimates how random-looking a value is. It is used for confidence scoring and included in JSON output.
 
 ---
 
@@ -255,7 +254,7 @@ Combined:
 python3 main.py path/to/project --severity HIGH --confidence HIGH
 ```
 
-Filtering controls displayed findings only.
+Filtering controls displayed findings only. It does not change detection.
 
 ---
 
@@ -278,7 +277,7 @@ python3 main.py path/to/project --redact
 abc1234567890j → ab**********0j
 ```
 
-Short values:
+Short values are fully redacted:
 
 ```text
 [REDACTED]
@@ -323,19 +322,40 @@ AWS_ACCESS_KEY → suppressed
 API_KEY        → still reported
 ```
 
-Multiple rules:
-
-```python
-api_key = "AKIAEXAMPLE123456789"  # sentinelscan: ignore AWS_ACCESS_KEY API_KEY
-```
-
-Inline ignore markers must appear inside Python comments.
-
-This does not suppress findings:
+Inline ignore markers must appear inside Python comments. This does not suppress findings:
 
 ```python
 password = "sentinelscan: ignore"
 ```
+
+---
+
+## Ignored Patterns
+
+SentinelScan intentionally ignores unsupported or lower-signal patterns.
+
+```python
+password = 123456
+config[password_key] = "abcdef"
+items[0] = "abcdef"
+password = os.getenv("PASSWORD")
+password = input("Enter password: ")
+password = "abc" + "def"
+set_password("abcdef")
+return "abcdef"
+```
+
+Currently ignored areas include:
+
+- non-string assigned values
+- dynamic subscript keys
+- numeric subscript indexes
+- function call return values
+- function call arguments
+- return statements
+- string concatenation
+- dynamically constructed values
+- non-Python files
 
 ---
 
@@ -355,11 +375,10 @@ Possible false negatives:
 password = "abc" + "def"
 set_password("abcdef")
 return "abcdef"
-config = {"password": "abcdef"}
 password = os.getenv("PASSWORD")
 ```
 
-Future improvements may reduce these through dictionary extraction, function-call extraction, constant propagation, data-flow analysis, and additional file type support.
+Future improvements may reduce these through function-call extraction, constant propagation, data-flow analysis, and additional file type support.
 
 ---
 
@@ -369,9 +388,8 @@ SentinelScan currently focuses on:
 
 ```text
 Python source files
-AST-based assignment analysis
-Hardcoded string literals
-Rule-based secret detection
+AST-based string-literal analysis
+Rule-based hardcoded-secret detection
 Confidence scoring
 Structured text/JSON output
 ```

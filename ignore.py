@@ -1,3 +1,12 @@
+"""
+File-level ignore support for SentinelScan.
+
+SentinelScan uses a `.sentinelscanignore` file to skip files before scanning.
+The syntax is intentionally small and similar to common ignore files: blank
+lines and comments are ignored, directory patterns are supported, and glob-style
+filename/path patterns are matched against discovered files.
+"""
+
 from fnmatch import fnmatch
 from pathlib import Path
 
@@ -7,11 +16,14 @@ IGNORE_FILE_NAME = ".sentinelscanignore"
 
 def find_ignore_file(start_path):
     """
-    Find .sentinelscanignore in the scan path or one of its parent directories.
+    Find `.sentinelscanignore` in the scan path or one of its parent directories.
+
+    Args:
+        start_path (str | Path): Scan path used as the search starting point.
 
     Returns:
-        tuple[Path | None, Path | None]:
-            (ignore_file, ignore_root), or (None, None) if not found.
+        tuple[Path | None, Path | None]: Ignore file path and the directory that
+        owns it, or `(None, None)` if no ignore file is found.
     """
     start_path = Path(start_path).resolve()
 
@@ -26,11 +38,16 @@ def find_ignore_file(start_path):
 
 def load_ignore_patterns(start_path):
     """
-    Load ignore patterns from .sentinelscanignore.
+    Load ignore patterns from the nearest `.sentinelscanignore` file.
+
+    Blank lines and comment lines are skipped. Patterns are returned exactly as
+    configured except for surrounding whitespace.
+
+    Args:
+        start_path (str | Path): Scan path used to locate the ignore file.
 
     Returns:
-        tuple[list[str], Path | None]:
-            Ignore patterns and the directory where the ignore file was found.
+        tuple[list[str], Path | None]: Ignore patterns and their root directory.
     """
     ignore_file, ignore_root = find_ignore_file(start_path)
 
@@ -55,7 +72,15 @@ def load_ignore_patterns(start_path):
 
 def should_ignore(file_path, ignore_root, patterns):
     """
-    Return True if a file matches any ignore pattern.
+    Return True when a file matches any configured ignore pattern.
+
+    Args:
+        file_path (str | Path): Candidate file path.
+        ignore_root (Path | None): Directory that owns the ignore patterns.
+        patterns (list[str]): Loaded ignore patterns.
+
+    Returns:
+        bool: True if the file should be skipped.
     """
     if not patterns or ignore_root is None:
         return False
@@ -70,6 +95,7 @@ def should_ignore(file_path, ignore_root, patterns):
     for pattern in patterns:
         pattern = pattern.strip().replace("\\", "/")
 
+        # Directory patterns skip everything below the matching directory.
         if pattern.endswith("/"):
             directory_pattern = pattern.rstrip("/")
 
@@ -95,7 +121,15 @@ def should_ignore(file_path, ignore_root, patterns):
 
 def filter_ignored_files(files, ignore_root, patterns):
     """
-    Remove files that match .sentinelscanignore patterns.
+    Remove files that match `.sentinelscanignore` patterns.
+
+    Args:
+        files (list[Path]): Discovered Python files.
+        ignore_root (Path | None): Directory that owns the ignore patterns.
+        patterns (list[str]): Loaded ignore patterns.
+
+    Returns:
+        list[Path]: Files that should still be scanned.
     """
     kept_files = []
 
@@ -106,12 +140,3 @@ def filter_ignored_files(files, ignore_root, patterns):
         kept_files.append(file_path)
 
     return kept_files
-        
-
-
-    
-    
-        
-
-
-

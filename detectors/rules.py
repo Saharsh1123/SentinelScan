@@ -1,11 +1,12 @@
 """
 Built-in detection rules for SentinelScan.
 
-Rules are declarative configuration objects consumed by the rule engine.
-Each rule defines matching criteria, severity, and the reason shown in output.
+Rules are declarative configuration objects consumed by the rule engine. Each
+rule defines matching criteria, severity, and the explanation shown in output.
 """
 
 import re
+
 from detectors.models import Rule
 
 
@@ -66,7 +67,8 @@ SECRET = Rule(
 )
 
 
-# Ordered list of rules evaluated against each extracted candidate.
+# Rules are evaluated in order. This order is intentionally tested because a
+# single candidate may match multiple rules.
 RULES = [
     AWS_ACCESS_KEY,
     PASSWORD,
