@@ -1,6 +1,6 @@
 {
   "min_confidence": "MEDIUM",
-  "min_severity": "HIGH",
+  "min_severity": "MEDIUM",
   "redact": true,
-  "ignored_rules": ["SECRET"]
+  "output_format": "json"
 }

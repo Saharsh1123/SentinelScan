@@ -16,7 +16,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument("path", help="Path to the directory to scan")
 
 # Output findings as machine-readable JSON.
-parser.add_argument("--json", action="store_true", help="Output findings as JSON")
+parser.add_argument("--json", action="store_true", default=None, help="Output findings as JSON")
 
 # Limit displayed findings to a selected severity.
 parser.add_argument(
@@ -36,6 +36,7 @@ parser.add_argument(
 parser.add_argument(
     "--redact",
     action="store_true",
+    default=None,
     help="Redact detected secret values",
 )
 

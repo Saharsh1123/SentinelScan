@@ -6,6 +6,7 @@ and output rendering. Scanner and detector internals stay in their own modules.
 """
 
 from cli import return_args
+from config.config import get_config
 from output import filter_results, output
 from scanner import check_path, list_python_files, scan
 
@@ -16,12 +17,13 @@ if __name__ == "__main__":
 
         # Copy parsed arguments into local names for the scan pipeline.
         input_path = args.path
-        use_json = args.json
-        redact_secrets = args.redact
-        chosen_severity = args.severity
-        chosen_confidence = args.confidence
-
         path = check_path(input_path)
+        scanner_config = get_config(path)
+        use_json = (args.json if args.json is not None else scanner_config.output_format == "json")
+        redact_secrets = (args.redact if args.redact is not None else scanner_config.redact)
+        chosen_severity = (scanner_config.min_severity if args.severity is None else args.severity)
+        chosen_confidence = (scanner_config.min_confidence if args.confidence is None else args.confidence)
+
         files = list_python_files(path)
         results = scan(files)
 
