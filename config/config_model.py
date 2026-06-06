@@ -1,16 +1,29 @@
 """
-Configuration model for SentinelScan.
+Configuration data model for SentinelScan.
 
-`ScannerConfig` represents the final scanner settings after applying built-in
-defaults, optional config file values, and explicit CLI overrides.
+This module defines the final scanner settings used by the application after
+built-in defaults, optional `sentinelscan.json` values, and explicit CLI
+overrides are merged.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal
 
 
 Level = Literal["LOW", "MEDIUM", "HIGH"]
 OutputFormat = Literal["text", "json"]
+
+VALID_LEVELS: tuple[Level, ...] = ("LOW", "MEDIUM", "HIGH")
+VALID_OUTPUT_FORMATS: tuple[OutputFormat, ...] = ("text", "json")
+
+
+def _default_levels() -> list[Level]:
+    """
+    Return a fresh list of all supported levels.
+
+    A function is used so each `ScannerConfig` instance receives its own list.
+    """
+    return list(VALID_LEVELS)
 
 
 @dataclass
@@ -18,12 +31,12 @@ class ScannerConfig:
     """
     Store user-configurable scanner settings.
 
-    `None` for severity or confidence means no filter is applied. This keeps
-    default scans broad while allowing config files or CLI flags to narrow
-    results when requested.
+    Severity and confidence fields are explicit allow-lists. By default, all
+    levels are included so scans show every finding unless config or CLI options
+    narrow the result set.
     """
 
-    min_confidence: Level | None = None
-    min_severity: Level | None = None
+    severity_levels: list[Level] = field(default_factory=_default_levels)
+    confidence_levels: list[Level] = field(default_factory=_default_levels)
     redact: bool = False
     output_format: OutputFormat = "text"

@@ -1,8 +1,9 @@
 """
 SentinelScan application entry point.
 
-Coordinates CLI parsing, path validation, file discovery, scanning, filtering,
-and output rendering. Scanner and detector internals stay in their own modules.
+Coordinates CLI parsing, path validation, config loading, file discovery,
+scanning, filtering, and output rendering. Scanner and detector internals stay
+in their own modules.
 """
 
 from cli import return_args
@@ -15,14 +16,25 @@ if __name__ == "__main__":
     try:
         args = return_args()
 
-        # Copy parsed arguments into local names for the scan pipeline.
         input_path = args.path
         path = check_path(input_path)
         scanner_config = get_config(path)
-        use_json = (args.json if args.json is not None else scanner_config.output_format == "json")
-        redact_secrets = (args.redact if args.redact is not None else scanner_config.redact)
-        chosen_severity = (scanner_config.min_severity if args.severity is None else args.severity)
-        chosen_confidence = (scanner_config.min_confidence if args.confidence is None else args.confidence)
+
+        # CLI values override config only when the user explicitly provided them.
+        use_json = (
+            args.json if args.json is not None else scanner_config.output_format == "json"
+        )
+        redact_secrets = (
+            args.redact if args.redact is not None else scanner_config.redact
+        )
+        chosen_severity = (
+            scanner_config.severity_levels if args.severity is None else args.severity
+        )
+        chosen_confidence = (
+            scanner_config.confidence_levels
+            if args.confidence is None
+            else args.confidence
+        )
 
         files = list_python_files(path)
         results = scan(files)

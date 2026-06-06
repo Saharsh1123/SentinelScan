@@ -333,3 +333,32 @@ def test_cli_json_severity_and_confidence_no_matches(tmp_path):
     data = parse_json_output(result)
 
     assert data == []
+
+def test_cli_json_multiple_severity_levels_include_exact_matches(tmp_path):
+    """
+    Multiple severity selections should include only those exact levels.
+    """
+    make_severity_fixture(tmp_path)
+
+    result = run_cli(tmp_path, "--json", "--severity", "HIGH", "MEDIUM")
+    assert_success(result)
+
+    data = parse_json_output(result)
+
+    assert {finding["severity"] for finding in data} == {"HIGH", "MEDIUM"}
+    assert all(finding["severity"] in {"HIGH", "MEDIUM"} for finding in data)
+
+
+def test_cli_json_multiple_confidence_levels_include_exact_matches(tmp_path):
+    """
+    Multiple confidence selections should include only those exact levels.
+    """
+    make_confidence_fixture(tmp_path)
+
+    result = run_cli(tmp_path, "--json", "--confidence", "LOW", "HIGH")
+    assert_success(result)
+
+    data = parse_json_output(result)
+
+    assert {finding["confidence"] for finding in data} == {"LOW", "HIGH"}
+    assert all(finding["confidence"] in {"LOW", "HIGH"} for finding in data)

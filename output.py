@@ -1,8 +1,8 @@
 """
-Output formatting, filtering, and redaction.
+Output formatting, filtering, and redaction for SentinelScan.
 
-This module owns presentation concerns only. Detection always uses original
-secret values; redaction is applied only when rendering text or JSON output.
+Detection always uses original secret values. Redaction is applied only while
+rendering text or JSON output.
 """
 
 import json
@@ -32,23 +32,22 @@ def redact_value(value):
 
 def filter_results(results, chosen_severity, chosen_confidence):
     """
-    Filter findings by optional severity and confidence selections.
+    Filter findings by selected severity and confidence level lists.
 
     Args:
         results (list[Finding]): Findings returned by the scanner.
-        chosen_severity (str | None): Severity to keep, or None to keep all.
-        chosen_confidence (str | None): Confidence to keep, or None to keep all.
+        chosen_severity (list[str]): Severities to keep.
+        chosen_confidence (list[str]): Confidence levels to keep.
 
     Returns:
-        list[Finding]: Findings matching the selected filters.
+        list[Finding]: Findings whose severity and confidence both match the
+            selected lists.
     """
     filtered_findings = []
 
     for finding in results:
-        severity_matches = finding.severity == chosen_severity or chosen_severity is None
-        confidence_matches = (
-            finding.confidence == chosen_confidence or chosen_confidence is None
-        )
+        severity_matches = finding.severity in chosen_severity
+        confidence_matches = finding.confidence in chosen_confidence
 
         if severity_matches and confidence_matches:
             filtered_findings.append(finding)

@@ -1,14 +1,16 @@
 import sys
 
+import pytest
+
 from cli import return_args
 
 
 def test_cli_boolean_flags_default_to_none(monkeypatch):
     """
-    Boolean CLI flags should default to None when absent.
+    Boolean flags should default to None when absent.
 
-    This allows sentinelscan.json to control the value when the user does not
-    explicitly provide a CLI override.
+    This lets sentinelscan.json control the setting unless the user explicitly
+    provides a CLI override.
     """
     monkeypatch.setattr(sys, "argv", ["main.py", "test_dirs"])
 
@@ -20,7 +22,7 @@ def test_cli_boolean_flags_default_to_none(monkeypatch):
 
 def test_cli_redact_flag_sets_true_when_provided(monkeypatch):
     """
-    --redact should explicitly override config redaction.
+    --redact should explicitly enable output redaction.
     """
     monkeypatch.setattr(sys, "argv", ["main.py", "test_dirs", "--redact"])
 
@@ -31,7 +33,7 @@ def test_cli_redact_flag_sets_true_when_provided(monkeypatch):
 
 def test_cli_json_flag_sets_true_when_provided(monkeypatch):
     """
-    --json should explicitly override config output_format.
+    --json should explicitly enable JSON output.
     """
     monkeypatch.setattr(sys, "argv", ["main.py", "test_dirs", "--json"])
 
@@ -40,12 +42,11 @@ def test_cli_json_flag_sets_true_when_provided(monkeypatch):
     assert args.json is True
 
 
-def test_cli_filters_default_to_none(monkeypatch):
+def test_cli_level_filters_default_to_none(monkeypatch):
     """
-    Severity and confidence should default to None when absent.
+    Level filters should default to None when absent.
 
-    This allows config file values to apply when the user does not provide CLI
-    filter overrides.
+    This lets config file level selections apply.
     """
     monkeypatch.setattr(sys, "argv", ["main.py", "test_dirs"])
 
@@ -55,27 +56,87 @@ def test_cli_filters_default_to_none(monkeypatch):
     assert args.confidence is None
 
 
-def test_cli_severity_override(monkeypatch):
+def test_cli_accepts_single_severity_level(monkeypatch):
     """
-    --severity should preserve explicit user intent for config merging.
+    Existing one-level severity syntax should still work.
     """
     monkeypatch.setattr(sys, "argv", ["main.py", "test_dirs", "--severity", "HIGH"])
 
     args = return_args()
 
-    assert args.severity == "HIGH"
+    assert args.severity == ["HIGH"]
 
 
-def test_cli_confidence_override(monkeypatch):
+def test_cli_accepts_multiple_severity_levels(monkeypatch):
     """
-    --confidence should preserve explicit user intent for config merging.
+    --severity should accept one or more exact levels.
     """
     monkeypatch.setattr(
         sys,
         "argv",
-        ["main.py", "test_dirs", "--confidence", "MEDIUM"],
+        ["main.py", "test_dirs", "--severity", "HIGH", "MEDIUM"],
     )
 
     args = return_args()
 
-    assert args.confidence == "MEDIUM"
+    assert args.severity == ["HIGH", "MEDIUM"]
+
+
+def test_cli_accepts_single_confidence_level(monkeypatch):
+    """
+    Existing one-level confidence syntax should still work.
+    """
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["main.py", "test_dirs", "--confidence", "LOW"],
+    )
+
+    args = return_args()
+
+    assert args.confidence == ["LOW"]
+
+
+def test_cli_accepts_multiple_confidence_levels(monkeypatch):
+    """
+    --confidence should accept one or more exact levels.
+    """
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["main.py", "test_dirs", "--confidence", "LOW", "HIGH"],
+    )
+
+    args = return_args()
+
+    assert args.confidence == ["LOW", "HIGH"]
+
+
+@pytest.mark.parametrize("bad_level", ["CRITICAL", "VERY_HIGH", "banana"])
+def test_cli_rejects_invalid_severity_levels(monkeypatch, bad_level):
+    """
+    Unsupported severity levels should be rejected by argparse.
+    """
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["main.py", "test_dirs", "--severity", bad_level],
+    )
+
+    with pytest.raises(SystemExit):
+        return_args()
+
+
+@pytest.mark.parametrize("bad_level", ["CRITICAL", "VERY_HIGH", "banana"])
+def test_cli_rejects_invalid_confidence_levels(monkeypatch, bad_level):
+    """
+    Unsupported confidence levels should be rejected by argparse.
+    """
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["main.py", "test_dirs", "--confidence", bad_level],
+    )
+
+    with pytest.raises(SystemExit):
+        return_args()

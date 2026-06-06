@@ -1,45 +1,58 @@
 """
 Configuration loading and validation for SentinelScan.
 
-The config loader reads optional `sentinelscan.json` files, validates supported
-settings, and returns a `ScannerConfig` object with defaults filled in for
-missing fields.
+The loader reads an optional `sentinelscan.json`, validates supported fields,
+and returns a `ScannerConfig` with defaults filled in for missing values.
 """
 
 import json
 from pathlib import Path
 
-from config.config_model import ScannerConfig
+from config.config_model import ScannerConfig, VALID_LEVELS, VALID_OUTPUT_FORMATS
 
 CONFIG_FILE_NAME = "sentinelscan.json"
-VALID_LEVELS = {"LOW", "MEDIUM", "HIGH"}
-VALID_OUTPUT_FORMATS = {"text", "json"}
 
 
-def _validate_level(field_name, value):
+_LEVEL_SET = set(VALID_LEVELS)
+_OUTPUT_FORMAT_SET = set(VALID_OUTPUT_FORMATS)
+
+
+def _validate_levels(field_name, value):
     """
-    Validate a severity or confidence level from config.
+    Validate a severity or confidence level list from config.
 
     Args:
         field_name (str): Config field being validated.
-        value (object): Config value to validate.
+        value (object): Raw JSON value to validate.
 
     Returns:
-        str: Validated level.
+        list[str]: Validated uppercase levels.
 
     Raises:
-        ValueError: If the value is not a supported string level.
+        ValueError: If the value is not a non-empty list containing only
+            supported level strings.
     """
-    if not isinstance(value, str):
-        raise ValueError(f"{field_name} must be a string")
+    if not isinstance(value, list):
+        raise ValueError(f"{field_name} must be a list")
 
-    normalized = value.upper()
-    if normalized not in VALID_LEVELS:
-        raise ValueError(
-            f"{field_name} must be one of: {', '.join(sorted(VALID_LEVELS))}"
-        )
+    if not value:
+        raise ValueError(f"{field_name} must contain at least one level")
 
-    return normalized
+    normalized_levels = []
+    for level in value:
+        if not isinstance(level, str):
+            raise ValueError(f"{field_name} entries must be strings")
+
+        normalized = level.upper()
+        if normalized not in _LEVEL_SET:
+            raise ValueError(
+                f"{field_name} entries must be one of: "
+                f"{', '.join(sorted(_LEVEL_SET))}"
+            )
+
+        normalized_levels.append(normalized)
+
+    return normalized_levels
 
 
 def _validate_output_format(value):
@@ -47,22 +60,22 @@ def _validate_output_format(value):
     Validate the configured output format.
 
     Args:
-        value (object): Config value to validate.
+        value (object): Raw JSON value to validate.
 
     Returns:
         str: Validated output format.
 
     Raises:
-        ValueError: If the value is not a supported output format.
+        ValueError: If the value is not `text` or `json`.
     """
     if not isinstance(value, str):
         raise ValueError("output_format must be a string")
 
     normalized = value.lower()
-    if normalized not in VALID_OUTPUT_FORMATS:
+    if normalized not in _OUTPUT_FORMAT_SET:
         raise ValueError(
             "output_format must be one of: "
-            f"{', '.join(sorted(VALID_OUTPUT_FORMATS))}"
+            f"{', '.join(sorted(_OUTPUT_FORMAT_SET))}"
         )
 
     return normalized
@@ -73,13 +86,13 @@ def _validate_redact(value):
     Validate the configured redaction setting.
 
     Args:
-        value (object): Config value to validate.
+        value (object): Raw JSON value to validate.
 
     Returns:
         bool: Validated redaction setting.
 
     Raises:
-        ValueError: If the value is not a boolean.
+        ValueError: If the value is not a JSON boolean.
     """
     if not isinstance(value, bool):
         raise ValueError("redact must be a boolean")
@@ -124,7 +137,7 @@ def get_config(scan_path=None):
 
     Raises:
         json.JSONDecodeError: If the config file is not valid JSON.
-        ValueError: If a supported config field has an invalid type or value.
+        ValueError: If a supported field has an invalid type or value.
     """
     path = _config_path(scan_path)
     if not path.exists():
@@ -138,16 +151,16 @@ def get_config(scan_path=None):
 
     scanner_config = ScannerConfig()
 
-    if "min_confidence" in raw_config:
-        scanner_config.min_confidence = _validate_level(
-            "min_confidence",
-            raw_config["min_confidence"],
+    if "severity_levels" in raw_config:
+        scanner_config.severity_levels = _validate_levels(
+            "severity_levels",
+            raw_config["severity_levels"],
         )
 
-    if "min_severity" in raw_config:
-        scanner_config.min_severity = _validate_level(
-            "min_severity",
-            raw_config["min_severity"],
+    if "confidence_levels" in raw_config:
+        scanner_config.confidence_levels = _validate_levels(
+            "confidence_levels",
+            raw_config["confidence_levels"],
         )
 
     if "redact" in raw_config:
