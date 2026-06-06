@@ -140,3 +140,63 @@ def test_cli_rejects_invalid_confidence_levels(monkeypatch, bad_level):
 
     with pytest.raises(SystemExit):
         return_args()
+
+
+def test_cli_normalizes_lowercase_severity_level(monkeypatch):
+    """
+    --severity should accept lowercase input and normalize it to uppercase.
+    """
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["main.py", "test_dirs", "--severity", "high"],
+    )
+
+    args = return_args()
+
+    assert args.severity == ["HIGH"]
+
+
+def test_cli_normalizes_mixed_case_severity_levels(monkeypatch):
+    """
+    --severity should normalize multiple selected levels to uppercase.
+    """
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["main.py", "test_dirs", "--severity", "high", "Medium", "LOW"],
+    )
+
+    args = return_args()
+
+    assert args.severity == ["HIGH", "MEDIUM", "LOW"]
+
+
+def test_cli_normalizes_lowercase_confidence_level(monkeypatch):
+    """
+    --confidence should accept lowercase input and normalize it to uppercase.
+    """
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["main.py", "test_dirs", "--confidence", "medium"],
+    )
+
+    args = return_args()
+
+    assert args.confidence == ["MEDIUM"]
+
+
+def test_cli_normalizes_mixed_case_confidence_levels(monkeypatch):
+    """
+    --confidence should normalize multiple selected levels to uppercase.
+    """
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["main.py", "test_dirs", "--confidence", "low", "High", "MEDIUM"],
+    )
+
+    args = return_args()
+
+    assert args.confidence == ["LOW", "HIGH", "MEDIUM"]

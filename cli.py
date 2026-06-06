@@ -30,6 +30,7 @@ parser.add_argument(
     "--severity",
     nargs="+",
     choices=VALID_LEVELS,
+    type=str.upper,
     default=None,
     help="Only show findings matching one or more selected severities",
 )
@@ -39,6 +40,7 @@ parser.add_argument(
     "--confidence",
     nargs="+",
     choices=VALID_LEVELS,
+    type=str.upper,
     default=None,
     help="Only show findings matching one or more selected confidence levels",
 )

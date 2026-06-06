@@ -11,7 +11,6 @@ from config.config import get_config
 from output import filter_results, output
 from scanner import check_path, list_python_files, scan
 
-
 if __name__ == "__main__":
     try:
         args = return_args()
@@ -22,7 +21,9 @@ if __name__ == "__main__":
 
         # CLI values override config only when the user explicitly provided them.
         use_json = (
-            args.json if args.json is not None else scanner_config.output_format == "json"
+            args.json
+            if args.json is not None
+            else scanner_config.output_format == "json"
         )
         redact_secrets = (
             args.redact if args.redact is not None else scanner_config.redact
