@@ -20,7 +20,7 @@ from tests.helpers import (
 def test_cli_json_severity_filter_keeps_only_matching_severity(tmp_path, severity):
     make_severity_fixture(tmp_path)
 
-    result = run_cli(tmp_path, "--json", "--severity", severity)
+    result = run_cli(tmp_path, "--format", "json", "--severity", severity)
     assert_success(result)
 
     data = parse_json_output(result)
@@ -34,7 +34,7 @@ def test_cli_json_severity_filter_keeps_only_matching_severity(tmp_path, severit
 def test_cli_json_severity_high_filter_exact_result(tmp_path):
     findings_file = make_severity_fixture(tmp_path)
 
-    result = run_cli(tmp_path, "--json", "--severity", "HIGH")
+    result = run_cli(tmp_path, "--format", "json", "--severity", "HIGH")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -56,7 +56,7 @@ def test_cli_json_severity_high_filter_exact_result(tmp_path):
 def test_cli_json_severity_medium_filter_exact_result(tmp_path):
     findings_file = make_severity_fixture(tmp_path)
 
-    result = run_cli(tmp_path, "--json", "--severity", "MEDIUM")
+    result = run_cli(tmp_path, "--format", "json", "--severity", "MEDIUM")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -106,7 +106,7 @@ def test_cli_text_severity_medium_filter(tmp_path):
 def test_cli_json_severity_filter_with_no_matching_findings(tmp_path):
     write_python_file(tmp_path, "medium.py", 'token = "abcdef"\n')
 
-    result = run_cli(tmp_path, "--json", "--severity", "HIGH")
+    result = run_cli(tmp_path, "--format", "json", "--severity", "HIGH")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -132,7 +132,7 @@ def test_cli_json_confidence_filter_keeps_only_matching_confidence(
 ):
     make_confidence_fixture(tmp_path)
 
-    result = run_cli(tmp_path, "--json", "--confidence", confidence)
+    result = run_cli(tmp_path, "--format", "json", "--confidence", confidence)
     assert_success(result)
 
     data = parse_json_output(result)
@@ -145,7 +145,7 @@ def test_cli_json_confidence_filter_keeps_only_matching_confidence(
 def test_cli_json_confidence_low_filter_exact_result(tmp_path):
     findings_file = make_confidence_fixture(tmp_path)
 
-    result = run_cli(tmp_path, "--json", "--confidence", "LOW")
+    result = run_cli(tmp_path, "--format", "json", "--confidence", "LOW")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -167,7 +167,7 @@ def test_cli_json_confidence_low_filter_exact_result(tmp_path):
 def test_cli_json_confidence_medium_filter_exact_result(tmp_path):
     findings_file = make_confidence_fixture(tmp_path)
 
-    result = run_cli(tmp_path, "--json", "--confidence", "MEDIUM")
+    result = run_cli(tmp_path, "--format", "json", "--confidence", "MEDIUM")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -189,7 +189,7 @@ def test_cli_json_confidence_medium_filter_exact_result(tmp_path):
 def test_cli_json_confidence_high_filter_exact_result(tmp_path):
     findings_file = make_confidence_fixture(tmp_path)
 
-    result = run_cli(tmp_path, "--json", "--confidence", "HIGH")
+    result = run_cli(tmp_path, "--format", "json", "--confidence", "HIGH")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -250,7 +250,7 @@ def test_cli_text_confidence_high_filter(tmp_path):
 def test_cli_json_confidence_filter_with_no_matching_findings(tmp_path):
     write_python_file(tmp_path, "low.py", 'password = "abcdef"\n')
 
-    result = run_cli(tmp_path, "--json", "--confidence", "HIGH")
+    result = run_cli(tmp_path, "--format", "json", "--confidence", "HIGH")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -274,7 +274,7 @@ def test_cli_json_severity_and_confidence_combined(tmp_path):
 
     result = run_cli(
         tmp_path,
-        "--json",
+        "--format", "json",
         "--severity",
         "HIGH",
         "--confidence",
@@ -322,7 +322,7 @@ def test_cli_json_severity_and_confidence_no_matches(tmp_path):
 
     result = run_cli(
         tmp_path,
-        "--json",
+        "--format", "json",
         "--severity",
         "HIGH",
         "--confidence",
@@ -340,7 +340,7 @@ def test_cli_json_multiple_severity_levels_include_exact_matches(tmp_path):
     """
     make_severity_fixture(tmp_path)
 
-    result = run_cli(tmp_path, "--json", "--severity", "HIGH", "MEDIUM")
+    result = run_cli(tmp_path, "--format", "json", "--severity", "HIGH", "MEDIUM")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -355,7 +355,7 @@ def test_cli_json_multiple_confidence_levels_include_exact_matches(tmp_path):
     """
     make_confidence_fixture(tmp_path)
 
-    result = run_cli(tmp_path, "--json", "--confidence", "LOW", "HIGH")
+    result = run_cli(tmp_path, "--format", "json", "--confidence", "LOW", "HIGH")
     assert_success(result)
 
     data = parse_json_output(result)

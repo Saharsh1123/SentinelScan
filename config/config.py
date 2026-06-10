@@ -3,6 +3,11 @@ Configuration loading and validation for SentinelScan.
 
 The loader reads an optional `sentinelscan.json`, validates supported fields,
 and returns a `ScannerConfig` with defaults filled in for missing values.
+
+Config lookup order:
+1. scan_path/sentinelscan.json, if a scan path is provided and the file exists
+2. ./sentinelscan.json from the current working directory
+3. ScannerConfig defaults if neither file exists
 """
 
 import json
@@ -11,7 +16,6 @@ from pathlib import Path
 from config.config_model import ScannerConfig, VALID_LEVELS, VALID_OUTPUT_FORMATS
 
 CONFIG_FILE_NAME = "sentinelscan.json"
-
 
 _LEVEL_SET = set(VALID_LEVELS)
 _OUTPUT_FORMAT_SET = set(VALID_OUTPUT_FORMATS)
@@ -39,11 +43,13 @@ def _validate_levels(field_name, value):
         raise ValueError(f"{field_name} must contain at least one level")
 
     normalized_levels = []
+
     for level in value:
         if not isinstance(level, str):
             raise ValueError(f"{field_name} entries must be strings")
 
         normalized = level.upper()
+
         if normalized not in _LEVEL_SET:
             raise ValueError(
                 f"{field_name} entries must be one of: "
@@ -63,15 +69,16 @@ def _validate_output_format(value):
         value (object): Raw JSON value to validate.
 
     Returns:
-        str: Validated output format.
+        str: Validated lowercase output format.
 
     Raises:
-        ValueError: If the value is not `text` or `json`.
+        ValueError: If the value is not a supported output format.
     """
     if not isinstance(value, str):
         raise ValueError("output_format must be a string")
 
     normalized = value.lower()
+
     if normalized not in _OUTPUT_FORMAT_SET:
         raise ValueError(
             "output_format must be one of: "
@@ -104,19 +111,28 @@ def _config_path(scan_path=None):
     """
     Resolve the config file path.
 
-    If a scan path is provided, SentinelScan looks for `sentinelscan.json` in
-    that scan root. Otherwise, it looks in the current working directory.
+    If a scan path is provided, SentinelScan first checks that scan root for
+    `sentinelscan.json`. If no scan-root config exists, it falls back to the
+    current working directory.
 
     Args:
         scan_path (str | Path | None): Optional directory being scanned.
 
     Returns:
-        Path: Candidate config file path.
+        Path | None: Config file path if one exists, otherwise None.
     """
-    if scan_path is None:
-        return Path(CONFIG_FILE_NAME)
+    if scan_path is not None:
+        scan_config = Path(scan_path) / CONFIG_FILE_NAME
 
-    return Path(scan_path) / CONFIG_FILE_NAME
+        if scan_config.exists():
+            return scan_config
+
+    cwd_config = Path(CONFIG_FILE_NAME)
+
+    if cwd_config.exists():
+        return cwd_config
+
+    return None
 
 
 def get_config(scan_path=None):
@@ -128,9 +144,8 @@ def get_config(scan_path=None):
     are ignored for forward compatibility.
 
     Args:
-        scan_path (str | Path | None): Optional scan root to search for
-            `sentinelscan.json`. If omitted, the current working directory is
-            used.
+        scan_path (str | Path | None): Optional scan root to check first for
+            `sentinelscan.json`.
 
     Returns:
         ScannerConfig: Validated scanner configuration.
@@ -140,7 +155,8 @@ def get_config(scan_path=None):
         ValueError: If a supported field has an invalid type or value.
     """
     path = _config_path(scan_path)
-    if not path.exists():
+
+    if path is None:
         return ScannerConfig()
 
     with open(path, "r", encoding="utf-8") as f:

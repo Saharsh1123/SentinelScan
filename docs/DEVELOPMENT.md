@@ -26,7 +26,7 @@ Smoke tests:
 
 ```bash
 python3 main.py test_dirs
-python3 main.py test_dirs --json
+python3 main.py test_dirs --format json
 python3 main.py test_dirs --severity HIGH MEDIUM --confidence HIGH --redact
 ```
 

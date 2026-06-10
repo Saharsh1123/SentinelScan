@@ -45,7 +45,7 @@ def test_cli_json_output_is_unredacted_by_default(tmp_path):
         'password = "abcdef"\n',
     )
 
-    result = run_cli(tmp_path, "--json")
+    result = run_cli(tmp_path, "--format", "json")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -71,7 +71,7 @@ def test_cli_json_redact_masks_secret_value(tmp_path):
         'password = "abcdef"\n',
     )
 
-    result = run_cli(tmp_path, "--json", "--redact")
+    result = run_cli(tmp_path, "--format", "json", "--redact")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -93,7 +93,7 @@ def test_cli_json_redact_masks_secret_value(tmp_path):
 def test_cli_json_redact_output_is_pure_json(tmp_path):
     write_python_file(tmp_path, "password_file.py", 'password = "abcdef"\n')
 
-    result = run_cli(tmp_path, "--json", "--redact")
+    result = run_cli(tmp_path, "--format", "json", "--redact")
     assert_success(result)
 
     assert_pure_json_output(result)
@@ -113,7 +113,7 @@ def test_cli_json_redact_short_boundary_value(tmp_path):
         'password = "abcd"\n',
     )
 
-    result = run_cli(tmp_path, "--json", "--redact")
+    result = run_cli(tmp_path, "--format", "json", "--redact")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -139,7 +139,7 @@ def test_cli_json_redact_long_value(tmp_path):
         'password = "abc_def-123#$%^&*()"\n',
     )
 
-    result = run_cli(tmp_path, "--json", "--redact")
+    result = run_cli(tmp_path, "--format", "json", "--redact")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -165,7 +165,7 @@ def test_cli_json_redact_aws_access_key(tmp_path):
         'random_var = "AKIAEXAMPLE123456789"\n',
     )
 
-    result = run_cli(tmp_path, "--json", "--redact")
+    result = run_cli(tmp_path, "--format", "json", "--redact")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -192,7 +192,7 @@ def test_cli_json_confidence_and_redact_combined(tmp_path):
         'api_token = "abc1234567890j"\n',
     )
 
-    result = run_cli(tmp_path, "--json", "--confidence", "HIGH", "--redact")
+    result = run_cli(tmp_path, "--format", "json", "--confidence", "HIGH", "--redact")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -234,7 +234,7 @@ def test_cli_json_severity_confidence_and_redact_combined(tmp_path):
 
     result = run_cli(
         tmp_path,
-        "--json",
+        "--format", "json",
         "--severity",
         "HIGH",
         "--confidence",
@@ -262,7 +262,7 @@ def test_cli_json_severity_confidence_and_redact_combined(tmp_path):
 def test_cli_no_findings_json_with_redact(tmp_path):
     write_python_file(tmp_path, "safe.py", 'username = "safe"\n')
 
-    result = run_cli(tmp_path, "--json", "--redact")
+    result = run_cli(tmp_path, "--format", "json", "--redact")
     assert_success(result)
 
     data = parse_json_output(result)

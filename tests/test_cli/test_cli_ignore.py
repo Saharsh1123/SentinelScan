@@ -14,7 +14,7 @@ def test_cli_json_respects_sentinelscanignore_file(tmp_path):
     write_python_file(tmp_path, "safe.py", 'username = "safe"\n')
     write_ignore_file(tmp_path, "ignored.py\n")
 
-    result = run_cli(tmp_path, "--json")
+    result = run_cli(tmp_path, "--format", "json")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -42,7 +42,7 @@ def test_cli_json_respects_ignored_directory(tmp_path):
     write_python_file(tmp_path, "safe.py", 'username = "safe"\n')
     write_ignore_file(tmp_path, "fixtures/\n")
 
-    result = run_cli(tmp_path, "--json")
+    result = run_cli(tmp_path, "--format", "json")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -55,7 +55,7 @@ def test_cli_json_respects_ignore_glob_pattern(tmp_path):
     write_python_file(tmp_path, "safe.py", 'username = "safe"\n')
     write_ignore_file(tmp_path, "*.min.py\n")
 
-    result = run_cli(tmp_path, "--json")
+    result = run_cli(tmp_path, "--format", "json")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -72,7 +72,7 @@ def test_cli_json_still_scans_non_ignored_files(tmp_path):
     write_python_file(tmp_path, "ignored.py", 'password = "abcdef"\n')
     write_ignore_file(tmp_path, "ignored.py\n")
 
-    result = run_cli(tmp_path, "--json")
+    result = run_cli(tmp_path, "--format", "json")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -98,7 +98,7 @@ def test_cli_json_parent_sentinelscanignore_applies_to_child_scan_path(tmp_path)
     safe_file = write_python_file(project_dir, "safe.py", 'token = "abc1234567890j"\n')
     write_ignore_file(tmp_path, "project/ignored.py\n")
 
-    result = run_cli(project_dir, "--json")
+    result = run_cli(project_dir, "--format", "json")
     assert_success(result)
 
     data = parse_json_output(result)

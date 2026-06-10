@@ -20,7 +20,7 @@ SentinelScan recursively scans Python files under the provided directory.
 | Option | Description |
 |---|---|
 | `path` | Directory to scan |
-| `--json` | Output machine-readable JSON |
+| `--format text/json` | Select output format |
 | `--severity LOW MEDIUM HIGH` | Keep exact severity levels |
 | `--confidence LOW MEDIUM HIGH` | Keep exact confidence levels |
 | `--redact` | Mask detected values |
@@ -80,7 +80,7 @@ python3 main.py test_dirs
 JSON output:
 
 ```bash
-python3 main.py test_dirs --json
+python3 main.py test_dirs --format json
 ```
 
 JSON mode emits only valid JSON so it can be parsed by scripts or CI jobs.
@@ -91,7 +91,7 @@ JSON mode emits only valid JSON so it can be parsed by scripts or CI jobs.
 
 ```bash
 python3 main.py test_dirs --redact
-python3 main.py test_dirs --json --redact
+python3 main.py test_dirs --format json --redact
 ```
 
 Redaction happens only when rendering output. Detection still uses the original value.
@@ -137,7 +137,7 @@ api_key = "AKIAEXAMPLE123456789"  # sentinelscan: ignore API_KEY
 pytest
 ruff check .
 python3 main.py test_dirs
-python3 main.py test_dirs --json
+python3 main.py test_dirs --format json
 python3 main.py test_dirs --severity HIGH MEDIUM
 python3 main.py test_dirs --confidence HIGH --redact
 ```

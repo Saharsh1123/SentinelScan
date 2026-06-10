@@ -5,9 +5,9 @@ import pytest
 from cli import return_args
 
 
-def test_cli_boolean_flags_default_to_none(monkeypatch):
+def test_cli_optional_overrides_default_to_none(monkeypatch):
     """
-    Boolean flags should default to None when absent.
+    Optional CLI overrides should default to None when absent.
 
     This lets sentinelscan.json control the setting unless the user explicitly
     provides a CLI override.
@@ -17,7 +17,7 @@ def test_cli_boolean_flags_default_to_none(monkeypatch):
     args = return_args()
 
     assert args.redact is None
-    assert args.json is None
+    assert args.format is None
 
 
 def test_cli_redact_flag_sets_true_when_provided(monkeypatch):
@@ -31,15 +31,41 @@ def test_cli_redact_flag_sets_true_when_provided(monkeypatch):
     assert args.redact is True
 
 
-def test_cli_json_flag_sets_true_when_provided(monkeypatch):
+def test_cli_format_accepts_json(monkeypatch):
     """
-    --json should explicitly enable JSON output.
+    --format json should explicitly select JSON output.
     """
-    monkeypatch.setattr(sys, "argv", ["main.py", "test_dirs", "--json"])
+    monkeypatch.setattr(sys, "argv", ["main.py", "test_dirs", "--format", "json"])
 
     args = return_args()
 
-    assert args.json is True
+    assert args.format == "json"
+
+
+def test_cli_format_normalizes_mixed_case(monkeypatch):
+    """
+    --format should accept mixed-case input and normalize it to lowercase.
+    """
+    monkeypatch.setattr(sys, "argv", ["main.py", "test_dirs", "--format", "JSON"])
+
+    args = return_args()
+
+    assert args.format == "json"
+
+
+@pytest.mark.parametrize("bad_format", ["xml", "yaml", "banana"])
+def test_cli_rejects_invalid_format(monkeypatch, bad_format):
+    """
+    Unsupported output formats should be rejected by argparse.
+    """
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["main.py", "test_dirs", "--format", bad_format],
+    )
+
+    with pytest.raises(SystemExit):
+        return_args()
 
 
 def test_cli_level_filters_default_to_none(monkeypatch):

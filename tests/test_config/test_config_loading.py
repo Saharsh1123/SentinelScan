@@ -226,3 +226,39 @@ def test_get_config_can_load_from_scan_path(tmp_path):
     config = get_config(tmp_path)
 
     assert config.severity_levels == ["HIGH"]
+
+
+def test_get_config_falls_back_to_current_working_directory(tmp_path, monkeypatch):
+    """
+    If the scan path has no config, get_config should fall back to cwd config.
+    """
+    scan_dir = tmp_path / "scan_target"
+    scan_dir.mkdir()
+
+    write_config(tmp_path, {"output_format": "json", "redact": True})
+    monkeypatch.chdir(tmp_path)
+
+    config = get_config(scan_dir)
+
+    assert config.output_format == "json"
+    assert config.redact is True
+
+
+def test_get_config_prefers_scan_path_config_over_current_working_directory(
+    tmp_path,
+    monkeypatch,
+):
+    """
+    A config inside the scanned directory should override cwd config.
+    """
+    scan_dir = tmp_path / "scan_target"
+    scan_dir.mkdir()
+
+    write_config(tmp_path, {"output_format": "json", "redact": True})
+    write_config(scan_dir, {"output_format": "text", "redact": False})
+    monkeypatch.chdir(tmp_path)
+
+    config = get_config(scan_dir)
+
+    assert config.output_format == "text"
+    assert config.redact is False

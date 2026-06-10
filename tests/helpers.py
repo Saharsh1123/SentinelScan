@@ -1,6 +1,8 @@
 import json
 import subprocess
 import sys
+import tempfile
+from pathlib import Path
 
 
 PASSWORD_REASON = (
@@ -13,18 +15,36 @@ SUPPORTED_CONFIDENCE = {"LOW", "MEDIUM", "HIGH"}
 SUPPORTED_SEVERITY = {"LOW", "MEDIUM", "HIGH"}
 
 
-def run_cli(*args):
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+MAIN_FILE = PROJECT_ROOT / "main.py"
+
+
+def _default_cli_cwd():
+    """
+    Create an isolated working directory for CLI subprocess tests.
+
+    The repository root may contain a developer sentinelscan.json. Running
+    default-behavior subprocess tests from the repo root would accidentally
+    apply that config to every test. A temporary cwd keeps tests independent
+    while still allowing individual tests to opt into a cwd config explicitly.
+    """
+    return Path(tempfile.mkdtemp(prefix="sentinelscan-cli-"))
+
+
+def run_cli(*args, cwd=None):
     """
     Run the SentinelScan CLI with the provided arguments.
 
-    Uses the current Python interpreter so tests work locally and in CI.
+    Uses the current Python interpreter and an absolute main.py path so tests
+    work even when the subprocess runs from a temporary directory.
     """
     return subprocess.run(
-        [sys.executable, "main.py", *map(str, args)],
+        [sys.executable, str(MAIN_FILE), *map(str, args)],
         capture_output=True,
         text=True,
+        cwd=cwd or _default_cli_cwd(),
+        timeout=30,
     )
-
 
 def assert_success(result):
     """

@@ -18,7 +18,7 @@ def test_cli_json_inline_ignore_suppresses_finding(tmp_path):
         'password = "abcdef"  # sentinelscan: ignore\n',
     )
 
-    result = run_cli(tmp_path, "--json")
+    result = run_cli(tmp_path, "--format", "json")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -34,7 +34,7 @@ def test_cli_json_inline_ignore_keeps_non_ignored_findings(tmp_path):
         'token = "abc1234567890j"\n',
     )
 
-    result = run_cli(tmp_path, "--json")
+    result = run_cli(tmp_path, "--format", "json")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -60,7 +60,7 @@ def test_cli_json_unrelated_comment_does_not_suppress_finding(tmp_path):
         'password = "abcdef"  # normal comment\n',
     )
 
-    result = run_cli(tmp_path, "--json")
+    result = run_cli(tmp_path, "--format", "json")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -86,7 +86,7 @@ def test_cli_json_inline_ignore_suppresses_multiple_findings_on_same_line(tmp_pa
         'api_key = "AKIAEXAMPLE123456789"  # sentinelscan: ignore\n',
     )
 
-    result = run_cli(tmp_path, "--json")
+    result = run_cli(tmp_path, "--format", "json")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -102,7 +102,7 @@ def test_cli_json_inline_ignore_works_with_severity_filter(tmp_path):
         'random_var = "AKIAEXAMPLE123456789"\n',
     )
 
-    result = run_cli(tmp_path, "--json", "--severity", "HIGH")
+    result = run_cli(tmp_path, "--format", "json", "--severity", "HIGH")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -129,7 +129,7 @@ def test_cli_json_inline_ignore_works_with_confidence_filter(tmp_path):
         'token = "abc1234567890j"\n',
     )
 
-    result = run_cli(tmp_path, "--json", "--confidence", "HIGH")
+    result = run_cli(tmp_path, "--format", "json", "--confidence", "HIGH")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -156,7 +156,7 @@ def test_cli_json_inline_ignore_works_with_redaction(tmp_path):
         'token = "abc1234567890j"\n',
     )
 
-    result = run_cli(tmp_path, "--json", "--redact")
+    result = run_cli(tmp_path, "--format", "json", "--redact")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -189,7 +189,7 @@ def test_cli_json_inline_ignore_and_sentinelscanignore_work_together(tmp_path):
     )
     write_ignore_file(tmp_path, "ignored.py\n")
 
-    result = run_cli(tmp_path, "--json")
+    result = run_cli(tmp_path, "--format", "json")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -301,7 +301,7 @@ def test_cli_json_rule_specific_ignore_suppresses_only_matching_rule(tmp_path):
         'api_key = "AKIAEXAMPLE123456789"  # sentinelscan: ignore AWS_ACCESS_KEY\n',
     )
 
-    result = run_cli(tmp_path, "--json")
+    result = run_cli(tmp_path, "--format", "json")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -327,7 +327,7 @@ def test_cli_json_rule_specific_ignore_can_keep_aws_match(tmp_path):
         'api_key = "AKIAEXAMPLE123456789"  # sentinelscan: ignore API_KEY\n',
     )
 
-    result = run_cli(tmp_path, "--json")
+    result = run_cli(tmp_path, "--format", "json")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -354,7 +354,7 @@ def test_cli_json_rule_specific_ignore_suppresses_multiple_listed_rules(tmp_path
         '# sentinelscan: ignore AWS_ACCESS_KEY API_KEY\n',
     )
 
-    result = run_cli(tmp_path, "--json")
+    result = run_cli(tmp_path, "--format", "json")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -369,7 +369,7 @@ def test_cli_json_unknown_rule_specific_ignore_does_not_suppress(tmp_path):
         'password = "abcdef"  # sentinelscan: ignore FAKE_RULE\n',
     )
 
-    result = run_cli(tmp_path, "--json")
+    result = run_cli(tmp_path, "--format", "json")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -449,7 +449,7 @@ def test_cli_json_rule_specific_ignore_works_with_filters_and_redaction(tmp_path
 
     result = run_cli(
         tmp_path,
-        "--json",
+        "--format", "json",
         "--severity",
         "MEDIUM",
         "--confidence",

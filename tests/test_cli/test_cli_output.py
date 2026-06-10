@@ -16,7 +16,7 @@ from tests.helpers import (
 def test_cli_json_output_is_valid_json(tmp_path):
     write_python_file(tmp_path, "vulnerable.py", 'password = "abcdef"\n')
 
-    result = run_cli(tmp_path, "--json")
+    result = run_cli(tmp_path, "--format", "json")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -28,7 +28,7 @@ def test_cli_json_output_is_valid_json(tmp_path):
 def test_cli_json_output_is_pure_json(tmp_path):
     write_python_file(tmp_path, "vulnerable.py", 'password = "abcdef"\n')
 
-    result = run_cli(tmp_path, "--json")
+    result = run_cli(tmp_path, "--format", "json")
     assert_success(result)
 
     assert_pure_json_output(result)
@@ -40,7 +40,7 @@ def test_cli_json_output_is_pure_json(tmp_path):
 def test_cli_json_schema(tmp_path):
     write_python_file(tmp_path, "vulnerable.py", 'password = "abcdef"\n')
 
-    result = run_cli(tmp_path, "--json")
+    result = run_cli(tmp_path, "--format", "json")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -67,7 +67,7 @@ def test_cli_json_schema(tmp_path):
 def test_cli_json_field_types(tmp_path):
     write_python_file(tmp_path, "vulnerable.py", 'password = "abcdef"\n')
 
-    result = run_cli(tmp_path, "--json")
+    result = run_cli(tmp_path, "--format", "json")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -92,7 +92,7 @@ def test_cli_json_field_types(tmp_path):
 def test_cli_json_entropy_values_are_numeric(tmp_path):
     write_python_file(tmp_path, "vulnerable.py", 'password = "abcdef"\n')
 
-    result = run_cli(tmp_path, "--json")
+    result = run_cli(tmp_path, "--format", "json")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -108,7 +108,7 @@ def test_cli_json_detects_secret_in_temp_directory(tmp_path):
         'password = "abcdef"\n',
     )
 
-    result = run_cli(tmp_path, "--json")
+    result = run_cli(tmp_path, "--format", "json")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -130,7 +130,7 @@ def test_cli_json_detects_secret_in_temp_directory(tmp_path):
 def test_cli_no_findings_json_output(tmp_path):
     write_python_file(tmp_path, "safe.py", 'username = "safe"\n')
 
-    result = run_cli(tmp_path, "--json")
+    result = run_cli(tmp_path, "--format", "json")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -139,7 +139,7 @@ def test_cli_no_findings_json_output(tmp_path):
 
 
 def test_cli_empty_directory_json_output_is_empty_list(tmp_path):
-    result = run_cli(tmp_path, "--json")
+    result = run_cli(tmp_path, "--format", "json")
     assert_success(result)
 
     data = parse_json_output(result)
