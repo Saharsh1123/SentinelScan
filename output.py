@@ -93,20 +93,20 @@ def output_json(filtered_findings, redact_secrets):
     print(json.dumps(json_results, indent=2))
 
 
-def output(filtered_findings, use_json, redact_secrets, files):
+def output(filtered_findings, output_format, redact_secrets, files):
     """
     Print scan results as JSON or human-readable CLI output.
 
     Args:
         filtered_findings (list[Finding]): Findings after optional filtering.
-        use_json (bool): Whether to output valid JSON only.
+        output_format (str): Selected output format: `text` or `json`.
         redact_secrets (bool): Whether to redact detected values.
         files (list[Path]): Python files included in the scan.
 
     Returns:
         None
     """
-    if use_json:
+    if output_format == "json":
         output_json(filtered_findings, redact_secrets)
         return
 

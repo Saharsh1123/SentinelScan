@@ -20,10 +20,10 @@ if __name__ == "__main__":
         scanner_config = get_config(path)
 
         # CLI values override config only when the user explicitly provided them.
-        use_json = (
-            args.json
-            if args.json is not None
-            else scanner_config.output_format == "json"
+        output_format = (
+            scanner_config.output_format
+            if args.format is None
+            else args.format
         )
         redact_secrets = (
             args.redact if args.redact is not None else scanner_config.redact
@@ -41,7 +41,7 @@ if __name__ == "__main__":
         results = scan(files)
 
         filtered_findings = filter_results(results, chosen_severity, chosen_confidence)
-        output(filtered_findings, use_json, redact_secrets, files)
+        output(filtered_findings, output_format, redact_secrets, files)
 
     except FileNotFoundError as e:
         # Report invalid paths without showing a traceback.

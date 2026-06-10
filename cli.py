@@ -7,7 +7,7 @@ This module defines user-facing CLI flags and returns parsed arguments to
 
 import argparse
 
-from config.config_model import VALID_LEVELS
+from config.config_model import VALID_LEVELS, VALID_OUTPUT_FORMATS
 
 
 parser = argparse.ArgumentParser(
@@ -17,12 +17,13 @@ parser = argparse.ArgumentParser(
 # Required target directory to scan.
 parser.add_argument("path", help="Path to the directory to scan")
 
-# Output findings as machine-readable JSON.
+# Output findings as chosen output type.
 parser.add_argument(
-    "--json",
-    action="store_true",
+    "--format",
+    choices=VALID_OUTPUT_FORMATS,
+    type=str.lower,
     default=None,
-    help="Output findings as JSON",
+    help="Output in chosen output format",
 )
 
 # Keep only findings whose severity is in the selected exact level list.
