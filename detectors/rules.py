@@ -9,7 +9,6 @@ import re
 
 from detectors.models import Rule
 
-
 # Detect AWS access keys by value format, regardless of variable name.
 AWS_ACCESS_KEY = Rule(
     rule_id="AWS_ACCESS_KEY",

@@ -81,8 +81,7 @@ def _validate_output_format(value):
 
     if normalized not in _OUTPUT_FORMAT_SET:
         raise ValueError(
-            "output_format must be one of: "
-            f"{', '.join(sorted(_OUTPUT_FORMAT_SET))}"
+            "output_format must be one of: " f"{', '.join(sorted(_OUTPUT_FORMAT_SET))}"
         )
 
     return normalized

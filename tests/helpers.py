@@ -4,7 +4,6 @@ import sys
 import tempfile
 from pathlib import Path
 
-
 PASSWORD_REASON = (
     "variable name matched password/pwd/passwd pattern and value met minimum length"
 )
@@ -45,6 +44,7 @@ def run_cli(*args, cwd=None):
         cwd=cwd or _default_cli_cwd(),
         timeout=30,
     )
+
 
 def assert_success(result):
     """
@@ -106,8 +106,7 @@ def make_severity_fixture(tmp_path):
     return write_python_file(
         tmp_path,
         "findings.py",
-        'password = "abcdef"\n'
-        'token = "abc1234567890j"\n',
+        'password = "abcdef"\n' 'token = "abc1234567890j"\n',
     )
 
 

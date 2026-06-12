@@ -9,7 +9,6 @@ overrides are merged.
 from dataclasses import dataclass, field
 from typing import Literal
 
-
 Level = Literal["LOW", "MEDIUM", "HIGH"]
 OutputFormat = Literal["text", "json"]
 

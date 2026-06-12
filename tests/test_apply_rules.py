@@ -1,7 +1,6 @@
 from detectors.models import Candidate
 from detectors.rule_engine import apply_rules
 
-
 PASSWORD_REASON = (
     "variable name matched password/pwd/passwd pattern and value met minimum length"
 )

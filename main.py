@@ -21,9 +21,7 @@ if __name__ == "__main__":
 
         # CLI values override config only when the user explicitly provided them.
         output_format = (
-            scanner_config.output_format
-            if args.format is None
-            else args.format
+            scanner_config.output_format if args.format is None else args.format
         )
         redact_secrets = (
             args.redact if args.redact is not None else scanner_config.redact

@@ -34,8 +34,7 @@ def test_scan_file_respects_inline_ignore(tmp_path):
     findings_file = write_python_file(
         tmp_path,
         "findings.py",
-        'password = "abcdef"  # sentinelscan: ignore\n'
-        'token = "abc1234567890j"\n',
+        'password = "abcdef"  # sentinelscan: ignore\n' 'token = "abc1234567890j"\n',
     )
 
     result = scan_file(findings_file)

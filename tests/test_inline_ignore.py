@@ -4,7 +4,6 @@ import pytest
 
 from scanner import finding_has_inline_ignore, scan
 
-
 PASSWORD_REASON = (
     "variable name matched password/pwd/passwd pattern and value met minimum length"
 )
@@ -92,7 +91,7 @@ def test_rule_specific_inline_ignore_does_not_match_different_rule_id():
 def test_rule_specific_inline_ignore_supports_multiple_rule_ids():
     line = (
         'api_key = "AKIAEXAMPLE123456789"  '
-        '# sentinelscan: ignore AWS_ACCESS_KEY API_KEY'
+        "# sentinelscan: ignore AWS_ACCESS_KEY API_KEY"
     )
 
     assert finding_has_inline_ignore(line, make_finding("AWS_ACCESS_KEY")) is True
@@ -180,8 +179,7 @@ def test_scan_inline_ignore_only_suppresses_same_line(tmp_path):
     findings_file = write_python_file(
         tmp_path,
         "findings.py",
-        'password = "abcdef"  # sentinelscan: ignore\n'
-        'token = "abc1234567890j"\n',
+        'password = "abcdef"  # sentinelscan: ignore\n' 'token = "abc1234567890j"\n',
     )
 
     result = scan([findings_file])
@@ -200,8 +198,7 @@ def test_scan_inline_ignore_on_previous_line_does_not_suppress_next_line(tmp_pat
     findings_file = write_python_file(
         tmp_path,
         "findings.py",
-        "# sentinelscan: ignore\n"
-        'password = "abcdef"\n',
+        "# sentinelscan: ignore\n" 'password = "abcdef"\n',
     )
 
     result = scan([findings_file])
@@ -223,7 +220,9 @@ def test_scan_inline_ignore_suppresses_multiple_findings_on_same_line(tmp_path):
     assert result == []
 
 
-def test_scan_inline_ignore_suppresses_multiple_sensitive_targets_on_same_line(tmp_path):
+def test_scan_inline_ignore_suppresses_multiple_sensitive_targets_on_same_line(
+    tmp_path,
+):
     findings_file = write_python_file(
         tmp_path,
         "findings.py",
@@ -289,7 +288,7 @@ def test_scan_rule_specific_ignore_suppresses_multiple_listed_rules(tmp_path):
         tmp_path,
         "findings.py",
         'api_key = "AKIAEXAMPLE123456789"  '
-        '# sentinelscan: ignore AWS_ACCESS_KEY API_KEY\n',
+        "# sentinelscan: ignore AWS_ACCESS_KEY API_KEY\n",
     )
 
     result = scan([findings_file])

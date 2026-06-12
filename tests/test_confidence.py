@@ -2,7 +2,6 @@ import pytest
 
 from detectors.confidence import calculate_entropy, calculate_confidence
 
-
 # -------------------------
 # Entropy calculation tests
 # -------------------------

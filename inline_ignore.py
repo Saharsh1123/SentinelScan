@@ -8,7 +8,6 @@ markers inside string literals do not suppress findings accidentally.
 import io
 import tokenize
 
-
 INLINE_IGNORE_MARKER = "sentinelscan: ignore"
 
 

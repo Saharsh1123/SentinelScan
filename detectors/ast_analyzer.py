@@ -132,7 +132,9 @@ def extract_candidates_from_function_call(call_node):
             continue
 
         yield Candidate(
-            line_number=getattr(keyword.value, "lineno", getattr(call_node, "lineno", 0)),
+            line_number=getattr(
+                keyword.value, "lineno", getattr(call_node, "lineno", 0)
+            ),
             var_name=keyword.arg.lower(),
             value=keyword.value.value,
         )

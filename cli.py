@@ -9,7 +9,6 @@ import argparse
 
 from config.config_model import VALID_LEVELS, VALID_OUTPUT_FORMATS
 
-
 parser = argparse.ArgumentParser(
     description="Scan a directory for hardcoded secrets in Python files"
 )

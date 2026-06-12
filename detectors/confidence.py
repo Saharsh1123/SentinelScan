@@ -9,7 +9,6 @@ heuristics for confidence scoring without changing detection behavior.
 from collections import Counter
 import math
 
-
 COMMON_LOW_CONFIDENCE_VALUES = {
     "password",
     "admin",

@@ -274,7 +274,8 @@ def test_cli_json_severity_and_confidence_combined(tmp_path):
 
     result = run_cli(
         tmp_path,
-        "--format", "json",
+        "--format",
+        "json",
         "--severity",
         "HIGH",
         "--confidence",
@@ -316,13 +317,13 @@ def test_cli_json_severity_and_confidence_no_matches(tmp_path):
     write_python_file(
         tmp_path,
         "findings.py",
-        'password = "abcdef"\n'
-        'token = "abc1234567890j"\n',
+        'password = "abcdef"\n' 'token = "abc1234567890j"\n',
     )
 
     result = run_cli(
         tmp_path,
-        "--format", "json",
+        "--format",
+        "json",
         "--severity",
         "HIGH",
         "--confidence",
@@ -333,6 +334,7 @@ def test_cli_json_severity_and_confidence_no_matches(tmp_path):
     data = parse_json_output(result)
 
     assert data == []
+
 
 def test_cli_json_multiple_severity_levels_include_exact_matches(tmp_path):
     """

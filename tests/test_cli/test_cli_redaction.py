@@ -188,8 +188,7 @@ def test_cli_json_confidence_and_redact_combined(tmp_path):
     findings_file = write_python_file(
         tmp_path,
         "findings.py",
-        'password = "abcdef"\n'
-        'api_token = "abc1234567890j"\n',
+        'password = "abcdef"\n' 'api_token = "abc1234567890j"\n',
     )
 
     result = run_cli(tmp_path, "--format", "json", "--confidence", "HIGH", "--redact")
@@ -215,8 +214,7 @@ def test_cli_text_confidence_and_redact_combined(tmp_path):
     write_python_file(
         tmp_path,
         "findings.py",
-        'password = "abcdef"\n'
-        'api_token = "abc1234567890j"\n',
+        'password = "abcdef"\n' 'api_token = "abc1234567890j"\n',
     )
 
     result = run_cli(tmp_path, "--confidence", "HIGH", "--redact")
@@ -234,7 +232,8 @@ def test_cli_json_severity_confidence_and_redact_combined(tmp_path):
 
     result = run_cli(
         tmp_path,
-        "--format", "json",
+        "--format",
+        "json",
         "--severity",
         "HIGH",
         "--confidence",

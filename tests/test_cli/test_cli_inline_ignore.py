@@ -30,8 +30,7 @@ def test_cli_json_inline_ignore_keeps_non_ignored_findings(tmp_path):
     findings_file = write_python_file(
         tmp_path,
         "findings.py",
-        'password = "abcdef"  # sentinelscan: ignore\n'
-        'token = "abc1234567890j"\n',
+        'password = "abcdef"  # sentinelscan: ignore\n' 'token = "abc1234567890j"\n',
     )
 
     result = run_cli(tmp_path, "--format", "json")
@@ -125,8 +124,7 @@ def test_cli_json_inline_ignore_works_with_confidence_filter(tmp_path):
     findings_file = write_python_file(
         tmp_path,
         "findings.py",
-        'password = "abcdef"  # sentinelscan: ignore\n'
-        'token = "abc1234567890j"\n',
+        'password = "abcdef"  # sentinelscan: ignore\n' 'token = "abc1234567890j"\n',
     )
 
     result = run_cli(tmp_path, "--format", "json", "--confidence", "HIGH")
@@ -152,8 +150,7 @@ def test_cli_json_inline_ignore_works_with_redaction(tmp_path):
     findings_file = write_python_file(
         tmp_path,
         "findings.py",
-        'password = "abcdef"  # sentinelscan: ignore\n'
-        'token = "abc1234567890j"\n',
+        'password = "abcdef"  # sentinelscan: ignore\n' 'token = "abc1234567890j"\n',
     )
 
     result = run_cli(tmp_path, "--format", "json", "--redact")
@@ -179,8 +176,7 @@ def test_cli_json_inline_ignore_and_sentinelscanignore_work_together(tmp_path):
     findings_file = write_python_file(
         tmp_path,
         "src/findings.py",
-        'password = "abcdef"  # sentinelscan: ignore\n'
-        'token = "abc1234567890j"\n',
+        'password = "abcdef"  # sentinelscan: ignore\n' 'token = "abc1234567890j"\n',
     )
     write_python_file(
         tmp_path,
@@ -228,8 +224,7 @@ def test_cli_text_inline_ignore_keeps_non_ignored_findings(tmp_path):
     write_python_file(
         tmp_path,
         "findings.py",
-        'password = "abcdef"  # sentinelscan: ignore\n'
-        'token = "abc1234567890j"\n',
+        'password = "abcdef"  # sentinelscan: ignore\n' 'token = "abc1234567890j"\n',
     )
 
     result = run_cli(tmp_path)
@@ -280,8 +275,7 @@ def test_cli_text_inline_ignore_works_with_redaction(tmp_path):
     write_python_file(
         tmp_path,
         "findings.py",
-        'password = "abcdef"  # sentinelscan: ignore\n'
-        'token = "abc1234567890j"\n',
+        'password = "abcdef"  # sentinelscan: ignore\n' 'token = "abc1234567890j"\n',
     )
 
     result = run_cli(tmp_path, "--redact")
@@ -351,7 +345,7 @@ def test_cli_json_rule_specific_ignore_suppresses_multiple_listed_rules(tmp_path
         tmp_path,
         "findings.py",
         'api_key = "AKIAEXAMPLE123456789"  '
-        '# sentinelscan: ignore AWS_ACCESS_KEY API_KEY\n',
+        "# sentinelscan: ignore AWS_ACCESS_KEY API_KEY\n",
     )
 
     result = run_cli(tmp_path, "--format", "json")
@@ -427,7 +421,7 @@ def test_cli_text_rule_specific_ignore_suppresses_multiple_listed_rules(tmp_path
         tmp_path,
         "findings.py",
         'api_key = "AKIAEXAMPLE123456789"  '
-        '# sentinelscan: ignore AWS_ACCESS_KEY API_KEY\n',
+        "# sentinelscan: ignore AWS_ACCESS_KEY API_KEY\n",
     )
 
     result = run_cli(tmp_path)
@@ -449,7 +443,8 @@ def test_cli_json_rule_specific_ignore_works_with_filters_and_redaction(tmp_path
 
     result = run_cli(
         tmp_path,
-        "--format", "json",
+        "--format",
+        "json",
         "--severity",
         "MEDIUM",
         "--confidence",

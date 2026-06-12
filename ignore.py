@@ -10,7 +10,6 @@ filename/path patterns are matched against discovered files.
 from fnmatch import fnmatch
 from pathlib import Path
 
-
 IGNORE_FILE_NAME = ".sentinelscanignore"
 
 

@@ -1,7 +1,7 @@
 api_key = "123"
 password = "abc"
 token = "xyz"
-aws_key = "AKIAEXAMPLE123456789" # sentinelscan: ignore AWS_ACCESS_KE
+aws_key = "AKIAEXAMPLE123456789"  # sentinelscan: ignore AWS_ACCESS_KE
 token = "xyzttttggfdddf"
 api_key = "12dwdqwdqwdqw3"
 token = "xyzgggggg"  # noqa: E702
