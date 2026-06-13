@@ -165,7 +165,7 @@ def test_cli_text_output_contains_finding_details(tmp_path):
     assert_success(result)
 
     assert "[HIGH]" in result.stdout
-    assert "→" in result.stdout
+    assert "->" in result.stdout
     assert "Confidence:" in result.stdout
     assert "Reason:" in result.stdout
 

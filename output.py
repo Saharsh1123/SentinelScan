@@ -126,7 +126,7 @@ def output(filtered_findings, output_format, redact_secrets, files):
         print(
             f"[{finding.severity}] "
             f"{finding.file_path}:{finding.line_number} "
-            f"{finding.rule_name} → {display_value}"
+            f"{finding.rule_name} -> {display_value}"
         )
         print(f"       Confidence: {finding.confidence}")
         print(f"       Reason: {finding.reason}\n")
