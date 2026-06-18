@@ -1,9 +1,9 @@
 """
 Output filtering and rendering for SentinelScan.
 
-Detection always uses original secret values. Redaction is applied only while
-rendering text or JSON output. SARIF rendering is delegated to ``sarif.py`` and
-intentionally omits detected values entirely.
+Detection always uses original secret values. Text and JSON mask values by
+default and reveal plaintext only after an explicit unsafe CLI opt-in. SARIF
+rendering is delegated to ``sarif.py`` and never includes detected values.
 """
 
 import json
@@ -57,7 +57,7 @@ def filter_results(results, chosen_severity, chosen_confidence):
     return filtered_findings
 
 
-def output_json(filtered_findings, redact_secrets):
+def output_json(filtered_findings, show_secrets):
     """
     Print findings as machine-readable JSON.
 
@@ -66,7 +66,7 @@ def output_json(filtered_findings, redact_secrets):
 
     Args:
         filtered_findings (list[Finding]): Findings to serialize.
-        redact_secrets (bool): Whether to redact detected values.
+        show_secrets (bool): Whether plaintext display was explicitly enabled.
 
     Returns:
         None
@@ -75,7 +75,7 @@ def output_json(filtered_findings, redact_secrets):
 
     for filtered_finding in filtered_findings:
         value = filtered_finding.value
-        if redact_secrets:
+        if not show_secrets:
             value = redact_value(value)
 
         finding = {
@@ -95,14 +95,14 @@ def output_json(filtered_findings, redact_secrets):
     print(json.dumps(json_results, indent=2))
 
 
-def output(filtered_findings, output_format, redact_secrets, files, path):
+def output(filtered_findings, output_format, show_secrets, files, path):
     """Print scan results as text, JSON, or SARIF.
 
     Args:
         filtered_findings (list[Finding]): Findings after suppression and
             severity/confidence filtering.
         output_format (str): Selected format: ``text``, ``json``, or ``sarif``.
-        redact_secrets (bool): Whether to redact values in text or JSON output.
+        show_secrets (bool): Whether text or JSON may display plaintext values.
             SARIF never includes detected values.
         files (list[Path]): Python files included in the scan.
         path (str | Path): Scan root used for SARIF-relative artifact URIs.
@@ -111,7 +111,7 @@ def output(filtered_findings, output_format, redact_secrets, files, path):
         None
     """
     if output_format == "json":
-        output_json(filtered_findings, redact_secrets)
+        output_json(filtered_findings, show_secrets)
         return
     elif output_format == "sarif":
         output_sarif(filtered_findings, path)
@@ -127,7 +127,7 @@ def output(filtered_findings, output_format, redact_secrets, files, path):
 
     for finding in filtered_findings:
         display_value = finding.value
-        if redact_secrets:
+        if not show_secrets:
             display_value = redact_value(display_value)
 
         print(

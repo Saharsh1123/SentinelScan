@@ -13,7 +13,7 @@ SentinelScan is currently a Python-only static-analysis learning project focused
 - config file support and CLI precedence
 - text, JSON, and SARIF 2.1.0 output
 - repository-relative SARIF locations
-- redaction for text and JSON output
+- safe-by-default masking for text and JSON with an explicit unsafe plaintext opt-in
 - file-level and inline ignores
 - broad pytest coverage
 - Ubuntu and Windows CI across Python 3.11 and 3.12

@@ -13,7 +13,7 @@ SARIF_SCHEMA = "https://json.schemastore.org/sarif-2.1.0.json"
 
 
 def test_cli_sarif_output_is_valid_and_deduplicates_rules(tmp_path):
-    """The CLI should emit relative paths, unique rules, and all results."""
+    """SARIF should stay secret-free even when plaintext is requested elsewhere."""
     write_python_file(tmp_path, "nested/password.py", 'password = "abcdef"\n')
     write_python_file(
         tmp_path,
@@ -26,7 +26,7 @@ def test_cli_sarif_output_is_valid_and_deduplicates_rules(tmp_path):
         'token = "xyzttttggfdddf"\n',
     )
 
-    result = run_cli(tmp_path, "--format", "sarif", "--redact")
+    result = run_cli(tmp_path, "--format", "sarif", "--unsafe-show-secrets")
     assert_success(result)
 
     document = parse_json_output(result)

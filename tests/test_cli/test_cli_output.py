@@ -121,7 +121,7 @@ def test_cli_json_detects_secret_in_temp_directory(tmp_path):
         rule_id="PASSWORD",
         rule="Password",
         severity="HIGH",
-        value="abcdef",
+        value="a****f",
         reason=PASSWORD_REASON,
         confidence="LOW",
     )

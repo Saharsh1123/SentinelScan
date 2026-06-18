@@ -47,7 +47,7 @@ def test_cli_json_severity_high_filter_exact_result(tmp_path):
         rule_id="PASSWORD",
         rule="Password",
         severity="HIGH",
-        value="abcdef",
+        value="a****f",
         reason=PASSWORD_REASON,
         confidence="LOW",
     )
@@ -69,7 +69,7 @@ def test_cli_json_severity_medium_filter_exact_result(tmp_path):
         rule_id="TOKEN",
         rule="Token",
         severity="MEDIUM",
-        value="abc1234567890j",
+        value="ab**********0j",
         reason=TOKEN_REASON,
         confidence="HIGH",
     )
@@ -83,7 +83,7 @@ def test_cli_text_severity_high_filter(tmp_path):
 
     assert "[HIGH]" in result.stdout
     assert "[MEDIUM]" not in result.stdout
-    assert "abcdef" in result.stdout
+    assert "a****f" in result.stdout
     assert "abc1234567890j" not in result.stdout
     assert "Confidence:" in result.stdout
     assert "Reason:" in result.stdout
@@ -97,7 +97,7 @@ def test_cli_text_severity_medium_filter(tmp_path):
 
     assert "[MEDIUM]" in result.stdout
     assert "[HIGH]" not in result.stdout
-    assert "abc1234567890j" in result.stdout
+    assert "ab**********0j" in result.stdout
     assert "abcdef" not in result.stdout
     assert "Confidence:" in result.stdout
     assert "Reason:" in result.stdout
@@ -158,7 +158,7 @@ def test_cli_json_confidence_low_filter_exact_result(tmp_path):
         rule_id="PASSWORD",
         rule="Password",
         severity="HIGH",
-        value="abcdef",
+        value="a****f",
         reason=PASSWORD_REASON,
         confidence="LOW",
     )
@@ -180,7 +180,7 @@ def test_cli_json_confidence_medium_filter_exact_result(tmp_path):
         rule_id="TOKEN",
         rule="Token",
         severity="MEDIUM",
-        value="xyzttttggfdddf",
+        value="xy**********df",
         reason=TOKEN_REASON,
         confidence="MEDIUM",
     )
@@ -202,7 +202,7 @@ def test_cli_json_confidence_high_filter_exact_result(tmp_path):
         rule_id="TOKEN",
         rule="Token",
         severity="MEDIUM",
-        value="abc1234567890j",
+        value="ab**********0j",
         reason=TOKEN_REASON,
         confidence="HIGH",
     )
@@ -214,7 +214,7 @@ def test_cli_text_confidence_low_filter(tmp_path):
     result = run_cli(tmp_path, "--confidence", "LOW")
     assert_success(result)
 
-    assert "abcdef" in result.stdout
+    assert "a****f" in result.stdout
     assert "xyzttttggfdddf" not in result.stdout
     assert "abc1234567890j" not in result.stdout
     assert "Confidence:" in result.stdout
@@ -227,7 +227,7 @@ def test_cli_text_confidence_medium_filter(tmp_path):
     result = run_cli(tmp_path, "--confidence", "MEDIUM")
     assert_success(result)
 
-    assert "xyzttttggfdddf" in result.stdout
+    assert "xy**********df" in result.stdout
     assert "abcdef" not in result.stdout
     assert "abc1234567890j" not in result.stdout
     assert "Confidence:" in result.stdout
@@ -240,7 +240,7 @@ def test_cli_text_confidence_high_filter(tmp_path):
     result = run_cli(tmp_path, "--confidence", "HIGH")
     assert_success(result)
 
-    assert "abc1234567890j" in result.stdout
+    assert "ab**********0j" in result.stdout
     assert "abcdef" not in result.stdout
     assert "xyzttttggfdddf" not in result.stdout
     assert "Confidence:" in result.stdout
@@ -293,7 +293,7 @@ def test_cli_json_severity_and_confidence_combined(tmp_path):
         rule_id="AWS_ACCESS_KEY",
         rule="AWS Access Key",
         severity="HIGH",
-        value="AKIAEXAMPLE123456789",
+        value="AK****************89",
         reason=AWS_REASON,
         confidence="HIGH",
     )
@@ -306,7 +306,7 @@ def test_cli_text_severity_and_confidence_combined(tmp_path):
     assert_success(result)
 
     assert "AWS Access Key" in result.stdout
-    assert "AKIAEXAMPLE123456789" in result.stdout
+    assert "AK****************89" in result.stdout
     assert "abcdef" not in result.stdout
     assert "abc1234567890j" not in result.stdout
     assert "Confidence:" in result.stdout

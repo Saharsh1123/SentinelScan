@@ -45,12 +45,12 @@ parser.add_argument(
     help="Only show findings matching one or more selected confidence levels",
 )
 
-# Mask detected secret values in text or JSON; SARIF omits values entirely.
+# Plaintext secret output requires an explicit unsafe opt-in.
 parser.add_argument(
-    "--redact",
+    "--unsafe-show-secrets",
     action="store_true",
     default=None,
-    help="Redact detected secret values",
+    help="Unsafely show detected secrets in plaintext in text or JSON output",
 )
 
 
@@ -58,8 +58,8 @@ def return_args():
     """
     Parse and return CLI arguments.
 
-    Boolean flags default to `None` when absent so config file values can apply
-    unless the user explicitly provides a CLI override.
+    The unsafe secret-display flag defaults to `None` when absent so the
+    application can distinguish no opt-in from an explicit plaintext request.
 
     Returns:
         argparse.Namespace: Parsed CLI options used by the application entry

@@ -1,8 +1,9 @@
 """
 Configuration loading and validation for SentinelScan.
 
-The loader reads an optional `sentinelscan.json`, validates supported fields,
-and returns a `ScannerConfig` with defaults filled in for missing values.
+The loader reads an optional `sentinelscan.json`, validates severity,
+confidence, and output-format fields, and returns a `ScannerConfig` with
+defaults filled in for missing values. Secret disclosure is not configurable.
 
 Config lookup order:
 1. scan_path/sentinelscan.json, if a scan path is provided and the file exists
@@ -87,25 +88,6 @@ def _validate_output_format(value):
     return normalized
 
 
-def _validate_redact(value):
-    """
-    Validate the configured redaction setting.
-
-    Args:
-        value (object): Raw JSON value to validate.
-
-    Returns:
-        bool: Validated redaction setting.
-
-    Raises:
-        ValueError: If the value is not a JSON boolean.
-    """
-    if not isinstance(value, bool):
-        raise ValueError("redact must be a boolean")
-
-    return value
-
-
 def _config_path(scan_path=None):
     """
     Resolve the config file path.
@@ -178,9 +160,7 @@ def get_config(scan_path=None):
             raw_config["confidence_levels"],
         )
 
-    if "redact" in raw_config:
-        scanner_config.redact = _validate_redact(raw_config["redact"])
-
+    # Legacy branch pending removal; plaintext output is intended to be CLI-only.
     if "output_format" in raw_config:
         scanner_config.output_format = _validate_output_format(
             raw_config["output_format"]

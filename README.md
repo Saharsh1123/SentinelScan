@@ -24,7 +24,7 @@ It uses Python AST parsing to extract candidate values, applies a rule engine, a
 - Detects passwords, API keys, tokens, generic secrets, and AWS access keys
 - Reports severity, confidence, entropy, rule metadata, and reason
 - Supports human-readable text, machine-readable JSON, and SARIF 2.1.0 output
-- Supports exact severity and confidence filters, output redaction, and project config files
+- Masks secret values by default, supports an explicit `--unsafe-show-secrets` opt-in, and provides exact severity/confidence filters
 - Includes pytest coverage, pre-commit hooks, and GitHub Actions CI on Ubuntu and Windows
 
 ---
@@ -77,13 +77,13 @@ python3 main.py ./your_directory \
   --confidence HIGH
 ```
 
-Redact values in text or JSON output:
+Text and JSON mask detected values by default. Plaintext output requires an explicit unsafe opt-in:
 
 ```bash
-python3 main.py ./your_directory --redact
+python3 main.py ./your_directory --unsafe-show-secrets
 ```
 
-SARIF output never serializes detected secret values, regardless of the redaction flag.
+SARIF output never serializes detected secret values, even when `--unsafe-show-secrets` is provided.
 
 ---
 
@@ -95,12 +95,11 @@ SentinelScan first checks the scan root for `sentinelscan.json`. If none exists 
 {
   "severity_levels": ["HIGH", "MEDIUM"],
   "confidence_levels": ["HIGH"],
-  "redact": true,
   "output_format": "sarif"
 }
 ```
 
-Supported output formats are `text`, `json`, and `sarif`. Explicit CLI options override config values.
+Supported output formats are `text`, `json`, and `sarif`. Explicit CLI options override config values. Secret disclosure cannot be enabled from `sentinelscan.json`; it requires `--unsafe-show-secrets` on each invocation.
 
 ---
 
@@ -111,7 +110,7 @@ Scanning 4 Python files...
 
 --- Findings ---
 
-[HIGH] test_dirs/test_repo/open_vulns.py:4 AWS Access Key -> AKIAEXAMPLE123456789
+[HIGH] test_dirs/test_repo/open_vulns.py:4 AWS Access Key -> AK****************89
        Confidence: HIGH
        Reason: value matched AKIA-prefixed AWS access key pattern
 
@@ -131,7 +130,7 @@ Total findings: 1
     "rule_id": "AWS_ACCESS_KEY",
     "rule": "AWS Access Key",
     "severity": "HIGH",
-    "value": "AKIAEXAMPLE123456789",
+    "value": "AK****************89",
     "reason": "value matched AKIA-prefixed AWS access key pattern",
     "entropy": 3.91,
     "confidence": "HIGH"
@@ -170,7 +169,7 @@ python3 main.py ./your_directory --format sarif > sentinelscan.sarif
 
 | Document | Purpose |
 |---|---|
-| [`docs/USAGE.md`](docs/USAGE.md) | CLI usage, config, output formats, filtering, redaction, suppression |
+| [`docs/USAGE.md`](docs/USAGE.md) | CLI usage, safe secret display, config, output formats, filtering, suppression |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Pipeline, modules, models, SARIF serialization |
 | [`docs/DETECTION_RULES.md`](docs/DETECTION_RULES.md) | Rules, supported syntax, limitations |
 | [`docs/TESTING.md`](docs/TESTING.md) | Test layout, SARIF coverage, and CI strategy |

@@ -1,6 +1,6 @@
 # Usage Guide
 
-This guide covers SentinelScan's CLI options, config lookup, output formats, filtering, redaction, and suppression.
+This guide covers SentinelScan's CLI options, config lookup, output formats, filtering, safe secret display, and suppression.
 
 ---
 
@@ -23,7 +23,7 @@ SentinelScan recursively scans Python files under the provided directory.
 | `--format text/json/sarif` | Select the output format |
 | `--severity LOW MEDIUM HIGH` | Keep exact severity levels |
 | `--confidence LOW MEDIUM HIGH` | Keep exact confidence levels |
-| `--redact` | Mask detected values in text and JSON output |
+| `--unsafe-show-secrets` | Unsafely display detected values in plaintext for text and JSON output |
 
 Severity and confidence values are exact selections, not thresholds.
 
@@ -47,7 +47,6 @@ SentinelScan checks config locations in this order:
 {
   "severity_levels": ["HIGH", "MEDIUM"],
   "confidence_levels": ["HIGH"],
-  "redact": true,
   "output_format": "sarif"
 }
 ```
@@ -58,10 +57,9 @@ Supported fields:
 |---|---|---|
 | `severity_levels` | list | `LOW`, `MEDIUM`, `HIGH` |
 | `confidence_levels` | list | `LOW`, `MEDIUM`, `HIGH` |
-| `redact` | boolean | `true`, `false` |
 | `output_format` | string | `text`, `json`, `sarif` |
 
-Missing fields use defaults. Unknown fields are ignored. Invalid supported fields fail loudly.
+Missing fields use defaults. Unknown fields are ignored. Invalid supported fields fail loudly. Neither `redact` nor `show_secrets` is a supported config field; plaintext disclosure must be requested on the command line for each run.
 
 Precedence:
 
@@ -85,11 +83,11 @@ python3 main.py test_dirs
 
 ### JSON
 
-JSON emits a list of detailed findings and can include detected values or redacted display values.
+JSON emits a list of detailed findings with masked values by default. Plaintext values require the explicit unsafe flag.
 
 ```bash
 python3 main.py test_dirs --format json
-python3 main.py test_dirs --format json --redact
+python3 main.py test_dirs --format json --unsafe-show-secrets
 ```
 
 JSON mode emits only JSON, without scan headers or summaries.
@@ -113,7 +111,7 @@ Severity mapping:
 | `MEDIUM` | `warning` |
 | `HIGH` | `error` |
 
-SARIF messages never include detected secret values. The `--redact` flag therefore does not change SARIF content.
+SARIF messages never include detected secret values. `--unsafe-show-secrets` affects only text and JSON output and does not change SARIF content.
 
 ---
 
@@ -131,20 +129,29 @@ python3 main.py test_dirs --format sarif \
 
 ---
 
-## Redaction
+## Safe Secret Display
+
+Text and JSON mask detected values by default:
 
 ```bash
-python3 main.py test_dirs --redact
-python3 main.py test_dirs --format json --redact
+python3 main.py test_dirs
+python3 main.py test_dirs --format json
 ```
 
-Redaction happens only while rendering text or JSON. Detection and filtering still use the original value.
+Plaintext values require an explicit unsafe opt-in on each invocation:
 
-| Original | Redacted |
+```bash
+python3 main.py test_dirs --unsafe-show-secrets
+python3 main.py test_dirs --format json --unsafe-show-secrets
+```
+
+The flag changes rendering only. Detection, filtering, confidence scoring, and suppression still use the original value internally. SARIF never includes detected values.
+
+| Original | Default display |
 |---|---|
 | `abcd` | `[REDACTED]` |
 | `abcdef` | `a****f` |
-| `abc1234567890j` | `ab***********0j` |
+| `abc1234567890j` | `ab**********0j` |
 
 ---
 
@@ -184,5 +191,6 @@ python3 main.py test_dirs
 python3 main.py test_dirs --format json
 python3 main.py test_dirs --format sarif
 python3 main.py test_dirs --severity HIGH MEDIUM
-python3 main.py test_dirs --confidence HIGH --redact
+python3 main.py test_dirs --confidence HIGH
+python3 main.py test_dirs --unsafe-show-secrets
 ```

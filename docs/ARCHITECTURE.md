@@ -69,7 +69,7 @@ entropy
 confidence
 ```
 
-The AST analyzer creates candidates. The rule engine creates findings. Output modules serialize findings without changing them.
+The AST analyzer creates candidates. The rule engine creates findings. Output modules serialize findings without changing detection data; text and JSON mask values unless plaintext display was explicitly requested.
 
 ---
 
@@ -80,7 +80,7 @@ The AST analyzer creates candidates. The rule engine creates findings. Output mo
 ```text
 severity_levels = LOW, MEDIUM, HIGH
 confidence_levels = LOW, MEDIUM, HIGH
-redact = false
+show_secrets = false (runtime-only safe default)
 output_format = text
 ```
 
@@ -92,7 +92,7 @@ scan-root sentinelscan.json
     otherwise built-in defaults
 ```
 
-Explicit CLI options override the selected config only when provided.
+Explicit CLI options override supported config fields only when provided. Plaintext secret display is not configurable and requires the runtime-only `--unsafe-show-secrets` flag.
 
 ---
 

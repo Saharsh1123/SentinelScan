@@ -37,7 +37,7 @@ python3 -m pytest tests/test_output/test_sarif_output.py tests/test_cli/test_cli
 | Confidence tests | Entropy and confidence scoring |
 | Scanner tests | File scanning and inline-ignore integration |
 | Config tests | Defaults, validation, lookup precedence, and supported formats |
-| Output tests | Filtering, text/JSON rendering, redaction, and SARIF construction |
+| Output tests | Filtering, safe secret rendering, masking boundaries, and SARIF construction |
 | CLI tests | Real command behavior through subprocesses |
 
 Tests should cover one meaningful behavior at a time and avoid repeating behavior already proven at a lower layer.
@@ -53,7 +53,8 @@ tests/
 │   └── test_cli_sarif.py
 ├── test_config/
 ├── test_output/
-│   └── test_sarif_output.py
+│   ├── test_sarif_output.py
+│   └── test_secret_display.py
 ├── helpers.py
 ├── test_apply_rules.py
 ├── test_confidence.py
@@ -61,6 +62,20 @@ tests/
 ├── test_inline_ignore.py
 └── test_scanner.py
 ```
+
+---
+
+## Secret-Display Coverage
+
+The secret-display tests verify:
+
+- text and JSON mask values by default
+- `--unsafe-show-secrets` is the only CLI opt-in to plaintext output
+- the removed `--redact` flag is rejected
+- config files cannot enable plaintext secret display
+- short, medium, and long masking branches remain deterministic
+- JSON remains machine-readable when the unsafe flag is used
+- SARIF remains secret-free regardless of the unsafe flag
 
 ---
 
@@ -99,8 +114,8 @@ The suite intentionally does not repeat every detector-rule case in SARIF tests.
 - JSON output remains pure JSON
 - SARIF output remains one pure JSON object
 - text output includes readable finding details
-- redaction works in text and JSON
-- SARIF never serializes detected values
+- text and JSON mask values by default and expose plaintext only with `--unsafe-show-secrets`
+- SARIF never serializes detected values, even with the unsafe plaintext flag
 - `.sentinelscanignore` suppresses files
 - inline ignores suppress only intended findings
 - invalid CLI choices fail cleanly

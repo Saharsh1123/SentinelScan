@@ -41,7 +41,8 @@ Smoke tests:
 python3 main.py test_dirs
 python3 main.py test_dirs --format json
 python3 main.py test_dirs --format sarif
-python3 main.py test_dirs --severity HIGH MEDIUM --confidence HIGH --redact
+python3 main.py test_dirs --severity HIGH MEDIUM --confidence HIGH
+python3 main.py test_dirs --unsafe-show-secrets
 ```
 
 Focused SARIF checks:

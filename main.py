@@ -19,12 +19,15 @@ if __name__ == "__main__":
         path = check_path(input_path)
         scanner_config = get_config(path)
 
-        # CLI values override config only when the user explicitly provided them.
+        # Supported CLI settings override config only when explicitly provided.
         output_format = (
             scanner_config.output_format if args.format is None else args.format
         )
-        redact_secrets = (
-            args.redact if args.redact is not None else scanner_config.redact
+        # Plaintext secret display is a runtime-only, explicit unsafe opt-in.
+        show_secrets = (
+            args.unsafe_show_secrets
+            if args.unsafe_show_secrets is not None
+            else scanner_config.show_secrets
         )
         chosen_severity = (
             scanner_config.severity_levels if args.severity is None else args.severity
@@ -39,7 +42,7 @@ if __name__ == "__main__":
         results = scan(files)
 
         filtered_findings = filter_results(results, chosen_severity, chosen_confidence)
-        output(filtered_findings, output_format, redact_secrets, files, path)
+        output(filtered_findings, output_format, show_secrets, files, path)
 
     except FileNotFoundError as e:
         # Report invalid paths without showing a traceback.

@@ -3,7 +3,8 @@ Configuration data model for SentinelScan.
 
 This module defines the final scanner settings used by the application after
 built-in defaults, optional ``sentinelscan.json`` values, and explicit CLI
-overrides are merged. Supported output choices include text, JSON, and SARIF.
+overrides are merged. Plaintext secret display is disabled by default and is
+only intended to be enabled by the runtime unsafe CLI flag.
 """
 
 from dataclasses import dataclass, field
@@ -32,10 +33,11 @@ class ScannerConfig:
 
     Severity and confidence fields are explicit allow-lists. By default, all
     levels are included so scans show every finding unless config or CLI options
-    narrow the result set. ``output_format`` selects text, JSON, or SARIF.
+    narrow the result set. ``show_secrets`` is a safe-default runtime setting,
+    while ``output_format`` selects text, JSON, or SARIF.
     """
 
     severity_levels: list[Level] = field(default_factory=_default_levels)
     confidence_levels: list[Level] = field(default_factory=_default_levels)
-    redact: bool = False
+    show_secrets: bool = False
     output_format: OutputFormat = "text"

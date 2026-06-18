@@ -7,27 +7,21 @@ from config.config_model import ScannerConfig
 
 
 def write_config(tmp_path, data):
-    """
-    Write sentinelscan.json into a temporary directory.
-    """
+    """Write sentinelscan.json into a temporary directory."""
     config_file = tmp_path / "sentinelscan.json"
     config_file.write_text(json.dumps(data), encoding="utf-8")
     return config_file
 
 
 def test_get_config_returns_defaults_when_config_file_missing(tmp_path, monkeypatch):
-    """
-    Missing config files should fall back to ScannerConfig defaults.
-    """
+    """Missing config files should fall back to safe ScannerConfig defaults."""
     monkeypatch.chdir(tmp_path)
 
     assert get_config() == ScannerConfig()
 
 
-def test_get_config_loads_full_config_file(tmp_path, monkeypatch):
-    """
-    get_config should load all supported config fields.
-    """
+def test_get_config_loads_every_supported_field(tmp_path, monkeypatch):
+    """The loader should apply all supported file-based settings."""
     monkeypatch.chdir(tmp_path)
 
     write_config(
@@ -35,7 +29,6 @@ def test_get_config_loads_full_config_file(tmp_path, monkeypatch):
         {
             "severity_levels": ["HIGH", "MEDIUM"],
             "confidence_levels": ["HIGH"],
-            "redact": True,
             "output_format": "json",
         },
     )
@@ -44,50 +37,59 @@ def test_get_config_loads_full_config_file(tmp_path, monkeypatch):
 
     assert config.severity_levels == ["HIGH", "MEDIUM"]
     assert config.confidence_levels == ["HIGH"]
-    assert config.redact is True
+    assert config.show_secrets is False
     assert config.output_format == "json"
 
 
 def test_get_config_allows_partial_config_file(tmp_path, monkeypatch):
-    """
-    Partial config files should override only provided fields.
-    """
+    """Missing supported fields should retain their built-in defaults."""
     monkeypatch.chdir(tmp_path)
 
-    write_config(tmp_path, {"redact": True})
+    write_config(tmp_path, {"severity_levels": ["HIGH"]})
 
     config = get_config()
 
-    assert config.severity_levels == ["LOW", "MEDIUM", "HIGH"]
+    assert config.severity_levels == ["HIGH"]
     assert config.confidence_levels == ["LOW", "MEDIUM", "HIGH"]
-    assert config.redact is True
+    assert config.show_secrets is False
     assert config.output_format == "text"
 
 
-def test_get_config_ignores_unknown_keys_without_crashing(tmp_path, monkeypatch):
-    """
-    Unknown keys should be ignored instead of added to ScannerConfig.
-    """
+@pytest.mark.parametrize(
+    ("unsupported_key", "value"),
+    [
+        ("redact", True),
+        ("show_secrets", True),
+        ("unknown_setting", "ignored"),
+    ],
+)
+def test_get_config_ignores_unsupported_keys(
+    tmp_path,
+    monkeypatch,
+    unsupported_key,
+    value,
+):
+    """Config files must not enable plaintext output or add unknown fields."""
     monkeypatch.chdir(tmp_path)
 
     write_config(
         tmp_path,
         {
             "severity_levels": ["HIGH"],
-            "unknown_setting": "ignored",
+            unsupported_key: value,
         },
     )
 
     config = get_config()
 
     assert config.severity_levels == ["HIGH"]
+    assert config.show_secrets is False
+    assert not hasattr(config, "redact")
     assert not hasattr(config, "unknown_setting")
 
 
 def test_get_config_normalizes_level_and_output_case(tmp_path, monkeypatch):
-    """
-    Level names should normalize to uppercase and output format to lowercase.
-    """
+    """Levels should normalize uppercase and output formats lowercase."""
     monkeypatch.chdir(tmp_path)
 
     write_config(
@@ -107,22 +109,18 @@ def test_get_config_normalizes_level_and_output_case(tmp_path, monkeypatch):
 
 
 def test_get_config_rejects_invalid_json(tmp_path, monkeypatch):
-    """
-    Invalid JSON should fail loudly instead of silently using defaults.
-    """
+    """Malformed JSON should fail instead of silently using defaults."""
     monkeypatch.chdir(tmp_path)
 
     config_file = tmp_path / "sentinelscan.json"
     config_file.write_text("{ invalid json", encoding="utf-8")
 
-    with pytest.raises(Exception):
+    with pytest.raises(json.JSONDecodeError):
         get_config()
 
 
 def test_get_config_rejects_non_object_json(tmp_path, monkeypatch):
-    """
-    Config files must contain a JSON object.
-    """
+    """The config document must be a JSON object."""
     monkeypatch.chdir(tmp_path)
 
     config_file = tmp_path / "sentinelscan.json"
@@ -151,9 +149,7 @@ def test_get_config_rejects_invalid_level_field_types(
     field,
     value,
 ):
-    """
-    Level fields must be non-empty JSON arrays.
-    """
+    """Level settings must be non-empty JSON arrays."""
     monkeypatch.chdir(tmp_path)
 
     write_config(tmp_path, {field: value})
@@ -178,9 +174,7 @@ def test_get_config_rejects_invalid_level_field_types(
     ],
 )
 def test_get_config_rejects_invalid_level_values(tmp_path, monkeypatch, field, value):
-    """
-    Level arrays should contain only LOW, MEDIUM, or HIGH.
-    """
+    """Level arrays should contain only LOW, MEDIUM, or HIGH strings."""
     monkeypatch.chdir(tmp_path)
 
     write_config(tmp_path, {field: value})
@@ -189,38 +183,19 @@ def test_get_config_rejects_invalid_level_values(tmp_path, monkeypatch, field, v
         get_config()
 
 
-@pytest.mark.parametrize(
-    "field,value",
-    [
-        ("redact", "true"),
-        ("redact", 1),
-        ("redact", None),
-        ("output_format", "xml"),
-        ("output_format", True),
-        ("output_format", None),
-    ],
-)
-def test_get_config_rejects_invalid_non_level_fields(
-    tmp_path,
-    monkeypatch,
-    field,
-    value,
-):
-    """
-    Redaction and output format should be strictly validated.
-    """
+@pytest.mark.parametrize("value", ["xml", True, None])
+def test_get_config_rejects_invalid_output_format(tmp_path, monkeypatch, value):
+    """Output format remains a strictly validated supported setting."""
     monkeypatch.chdir(tmp_path)
 
-    write_config(tmp_path, {field: value})
+    write_config(tmp_path, {"output_format": value})
 
     with pytest.raises(ValueError):
         get_config()
 
 
 def test_get_config_can_load_from_scan_path(tmp_path):
-    """
-    Passing a scan path should load sentinelscan.json from that directory.
-    """
+    """An explicit scan path should load its local config file."""
     write_config(tmp_path, {"severity_levels": ["HIGH"]})
 
     config = get_config(tmp_path)
@@ -229,36 +204,32 @@ def test_get_config_can_load_from_scan_path(tmp_path):
 
 
 def test_get_config_falls_back_to_current_working_directory(tmp_path, monkeypatch):
-    """
-    If the scan path has no config, get_config should fall back to cwd config.
-    """
+    """A cwd config should apply when the scan root has no config."""
     scan_dir = tmp_path / "scan_target"
     scan_dir.mkdir()
 
-    write_config(tmp_path, {"output_format": "json", "redact": True})
+    write_config(tmp_path, {"output_format": "json"})
     monkeypatch.chdir(tmp_path)
 
     config = get_config(scan_dir)
 
     assert config.output_format == "json"
-    assert config.redact is True
+    assert config.show_secrets is False
 
 
 def test_get_config_prefers_scan_path_config_over_current_working_directory(
     tmp_path,
     monkeypatch,
 ):
-    """
-    A config inside the scanned directory should override cwd config.
-    """
+    """A scan-root config should take precedence over a cwd config."""
     scan_dir = tmp_path / "scan_target"
     scan_dir.mkdir()
 
-    write_config(tmp_path, {"output_format": "json", "redact": True})
-    write_config(scan_dir, {"output_format": "text", "redact": False})
+    write_config(tmp_path, {"output_format": "json"})
+    write_config(scan_dir, {"output_format": "text"})
     monkeypatch.chdir(tmp_path)
 
     config = get_config(scan_dir)
 
     assert config.output_format == "text"
-    assert config.redact is False
+    assert config.show_secrets is False

@@ -9,26 +9,36 @@ def test_cli_optional_overrides_default_to_none(monkeypatch):
     """
     Optional CLI overrides should default to None when absent.
 
-    This lets sentinelscan.json control the setting unless the user explicitly
-    provides a CLI override.
+    This preserves config precedence for supported settings and keeps the
+    safe secret-display default when the unsafe flag is absent.
     """
     monkeypatch.setattr(sys, "argv", ["main.py", "test_dirs"])
 
     args = return_args()
 
-    assert args.redact is None
+    assert args.unsafe_show_secrets is None
     assert args.format is None
 
 
-def test_cli_redact_flag_sets_true_when_provided(monkeypatch):
-    """
-    --redact should explicitly enable output redaction.
-    """
-    monkeypatch.setattr(sys, "argv", ["main.py", "test_dirs", "--redact"])
+def test_cli_unsafe_show_secrets_flag_sets_true_when_provided(monkeypatch):
+    """The unsafe flag should explicitly opt into plaintext secret output."""
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["main.py", "test_dirs", "--unsafe-show-secrets"],
+    )
 
     args = return_args()
 
-    assert args.redact is True
+    assert args.unsafe_show_secrets is True
+
+
+def test_cli_rejects_removed_redact_flag(monkeypatch):
+    """The old redaction flag should fail instead of implying unsafe defaults."""
+    monkeypatch.setattr(sys, "argv", ["main.py", "test_dirs", "--redact"])
+
+    with pytest.raises(SystemExit):
+        return_args()
 
 
 @pytest.mark.parametrize("output_format", ["text", "json", "sarif"])

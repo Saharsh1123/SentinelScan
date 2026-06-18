@@ -46,7 +46,7 @@ def test_cli_json_inline_ignore_keeps_non_ignored_findings(tmp_path):
         rule_id="TOKEN",
         rule="Token",
         severity="MEDIUM",
-        value="abc1234567890j",
+        value="ab**********0j",
         reason=TOKEN_REASON,
         confidence="HIGH",
     )
@@ -72,7 +72,7 @@ def test_cli_json_unrelated_comment_does_not_suppress_finding(tmp_path):
         rule_id="PASSWORD",
         rule="Password",
         severity="HIGH",
-        value="abcdef",
+        value="a****f",
         reason=PASSWORD_REASON,
         confidence="LOW",
     )
@@ -114,7 +114,7 @@ def test_cli_json_inline_ignore_works_with_severity_filter(tmp_path):
         rule_id="AWS_ACCESS_KEY",
         rule="AWS Access Key",
         severity="HIGH",
-        value="AKIAEXAMPLE123456789",
+        value="AK****************89",
         reason=AWS_REASON,
         confidence="HIGH",
     )
@@ -128,32 +128,6 @@ def test_cli_json_inline_ignore_works_with_confidence_filter(tmp_path):
     )
 
     result = run_cli(tmp_path, "--format", "json", "--confidence", "HIGH")
-    assert_success(result)
-
-    data = parse_json_output(result)
-
-    assert_single_json_finding(
-        data,
-        line=2,
-        file=findings_file,
-        var_name="token",
-        rule_id="TOKEN",
-        rule="Token",
-        severity="MEDIUM",
-        value="abc1234567890j",
-        reason=TOKEN_REASON,
-        confidence="HIGH",
-    )
-
-
-def test_cli_json_inline_ignore_works_with_redaction(tmp_path):
-    findings_file = write_python_file(
-        tmp_path,
-        "findings.py",
-        'password = "abcdef"  # sentinelscan: ignore\n' 'token = "abc1234567890j"\n',
-    )
-
-    result = run_cli(tmp_path, "--format", "json", "--redact")
     assert_success(result)
 
     data = parse_json_output(result)
@@ -198,7 +172,7 @@ def test_cli_json_inline_ignore_and_sentinelscanignore_work_together(tmp_path):
         rule_id="TOKEN",
         rule="Token",
         severity="MEDIUM",
-        value="abc1234567890j",
+        value="ab**********0j",
         reason=TOKEN_REASON,
         confidence="HIGH",
     )
@@ -233,7 +207,7 @@ def test_cli_text_inline_ignore_keeps_non_ignored_findings(tmp_path):
     assert "password" not in result.stdout
     assert "abcdef" not in result.stdout
     assert "Token" in result.stdout
-    assert "abc1234567890j" in result.stdout
+    assert "ab**********0j" in result.stdout
     assert "Reason:" in result.stdout
     assert "Confidence:" in result.stdout
 
@@ -250,7 +224,7 @@ def test_cli_text_unrelated_comment_does_not_suppress_finding(tmp_path):
 
     assert "[HIGH]" in result.stdout
     assert "Password" in result.stdout
-    assert "abcdef" in result.stdout
+    assert "a****f" in result.stdout
     assert "Reason:" in result.stdout
     assert "Confidence:" in result.stdout
 
@@ -269,23 +243,6 @@ def test_cli_text_inline_ignore_suppresses_multiple_findings_on_same_line(tmp_pa
     assert "AWS Access Key" not in result.stdout
     assert "API Key" not in result.stdout
     assert "AKIAEXAMPLE123456789" not in result.stdout
-
-
-def test_cli_text_inline_ignore_works_with_redaction(tmp_path):
-    write_python_file(
-        tmp_path,
-        "findings.py",
-        'password = "abcdef"  # sentinelscan: ignore\n' 'token = "abc1234567890j"\n',
-    )
-
-    result = run_cli(tmp_path, "--redact")
-    assert_success(result)
-
-    assert "abcdef" not in result.stdout
-    assert "a****f" not in result.stdout
-    assert "abc1234567890j" not in result.stdout
-    assert "ab**********0j" in result.stdout
-    assert "Token" in result.stdout
 
 
 def test_cli_json_rule_specific_ignore_suppresses_only_matching_rule(tmp_path):
@@ -308,7 +265,7 @@ def test_cli_json_rule_specific_ignore_suppresses_only_matching_rule(tmp_path):
         rule_id="API_KEY",
         rule="API Key",
         severity="HIGH",
-        value="AKIAEXAMPLE123456789",
+        value="AK****************89",
         reason="variable name matched api_key/apikey pattern and value met minimum length",
         confidence="HIGH",
     )
@@ -334,7 +291,7 @@ def test_cli_json_rule_specific_ignore_can_keep_aws_match(tmp_path):
         rule_id="AWS_ACCESS_KEY",
         rule="AWS Access Key",
         severity="HIGH",
-        value="AKIAEXAMPLE123456789",
+        value="AK****************89",
         reason=AWS_REASON,
         confidence="HIGH",
     )
@@ -376,7 +333,7 @@ def test_cli_json_unknown_rule_specific_ignore_does_not_suppress(tmp_path):
         rule_id="PASSWORD",
         rule="Password",
         severity="HIGH",
-        value="abcdef",
+        value="a****f",
         reason=PASSWORD_REASON,
         confidence="LOW",
     )
@@ -394,7 +351,7 @@ def test_cli_text_rule_specific_ignore_suppresses_only_matching_rule(tmp_path):
 
     assert "API Key" in result.stdout
     assert "AWS Access Key" not in result.stdout
-    assert "AKIAEXAMPLE123456789" in result.stdout
+    assert "AK****************89" in result.stdout
     assert "Confidence:" in result.stdout
     assert "Reason:" in result.stdout
 
@@ -411,7 +368,7 @@ def test_cli_text_rule_specific_ignore_can_keep_aws_match(tmp_path):
 
     assert "AWS Access Key" in result.stdout
     assert "API Key" not in result.stdout
-    assert "AKIAEXAMPLE123456789" in result.stdout
+    assert "AK****************89" in result.stdout
     assert "Confidence:" in result.stdout
     assert "Reason:" in result.stdout
 
@@ -433,7 +390,7 @@ def test_cli_text_rule_specific_ignore_suppresses_multiple_listed_rules(tmp_path
     assert "AKIAEXAMPLE123456789" not in result.stdout
 
 
-def test_cli_json_rule_specific_ignore_works_with_filters_and_redaction(tmp_path):
+def test_cli_json_rule_specific_ignore_works_with_filters(tmp_path):
     findings_file = write_python_file(
         tmp_path,
         "findings.py",
@@ -449,7 +406,6 @@ def test_cli_json_rule_specific_ignore_works_with_filters_and_redaction(tmp_path
         "MEDIUM",
         "--confidence",
         "HIGH",
-        "--redact",
     )
     assert_success(result)
 

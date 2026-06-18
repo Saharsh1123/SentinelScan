@@ -85,7 +85,7 @@ def test_cli_json_still_scans_non_ignored_files(tmp_path):
         rule_id="TOKEN",
         rule="Token",
         severity="MEDIUM",
-        value="abc1234567890j",
+        value="ab**********0j",
         reason=TOKEN_REASON,
         confidence="HIGH",
     )
@@ -111,7 +111,7 @@ def test_cli_json_parent_sentinelscanignore_applies_to_child_scan_path(tmp_path)
         rule_id="TOKEN",
         rule="Token",
         severity="MEDIUM",
-        value="abc1234567890j",
+        value="ab**********0j",
         reason=TOKEN_REASON,
         confidence="HIGH",
     )

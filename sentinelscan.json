@@ -1,6 +1,5 @@
 {
-  "confidence_levels": ["MEDIUM"],
-  "severity_levels": ["MEDIUM"],
-  "redact": true,
-  "output_format": "json"
+  "confidence_levels": ["MEDIUM", "HIGH"],
+  "severity_levels": ["MEDIUM", "HIGH"],
+  "output_format": "text"
 }
