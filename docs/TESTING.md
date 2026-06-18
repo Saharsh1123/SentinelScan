@@ -1,24 +1,29 @@
 # Testing
 
-SentinelScan uses unit tests and CLI integration tests to protect scanner behavior.
+SentinelScan uses unit tests and CLI integration tests to protect scanner and output behavior.
 
 ---
 
 ## Run Tests
 
 ```bash
-pytest
 python3 -m pytest
-pytest -q
+python3 -m pytest -q
 ```
 
 Run specific areas:
 
 ```bash
-pytest tests/test_ast
-pytest tests/test_cli
-pytest tests/test_config
-pytest tests/test_output
+python3 -m pytest tests/test_ast
+python3 -m pytest tests/test_cli
+python3 -m pytest tests/test_config
+python3 -m pytest tests/test_output
+```
+
+Run only SARIF coverage:
+
+```bash
+python3 -m pytest tests/test_output/test_sarif_output.py tests/test_cli/test_cli_sarif.py
 ```
 
 ---
@@ -30,12 +35,12 @@ pytest tests/test_output
 | AST tests | Candidate extraction and line numbers |
 | Rule tests | Candidate-to-finding behavior |
 | Confidence tests | Entropy and confidence scoring |
-| Scanner tests | File scanning and inline ignore integration |
-| Config tests | Defaults, validation, and partial config loading |
-| Output tests | Filtering, JSON schema, text output, redaction |
-| CLI tests | Real command behavior through subprocess |
+| Scanner tests | File scanning and inline-ignore integration |
+| Config tests | Defaults, validation, lookup precedence, and supported formats |
+| Output tests | Filtering, text/JSON rendering, redaction, and SARIF construction |
+| CLI tests | Real command behavior through subprocesses |
 
-Tests should be focused: one important behavior per test, no redundant assertions.
+Tests should cover one meaningful behavior at a time and avoid repeating behavior already proven at a lower layer.
 
 ---
 
@@ -45,8 +50,10 @@ Tests should be focused: one important behavior per test, no redundant assertion
 tests/
 ├── test_ast/
 ├── test_cli/
+│   └── test_cli_sarif.py
 ├── test_config/
 ├── test_output/
+│   └── test_sarif_output.py
 ├── helpers.py
 ├── test_apply_rules.py
 ├── test_confidence.py
@@ -57,15 +64,43 @@ tests/
 
 ---
 
+## SARIF Coverage
+
+The SARIF unit tests verify:
+
+- stable rule metadata
+- `LOW`/`MEDIUM`/`HIGH` to `note`/`warning`/`error` mapping
+- repository-relative POSIX file URIs
+- required SARIF 2.1.0 document structure
+- one rule definition per unique rule ID
+- one result per finding
+- valid empty reports
+- non-disclosure of detected secret values
+
+The SARIF CLI tests verify:
+
+- end-to-end CLI dispatch and JSON serialization
+- relative paths through the real scan pipeline
+- multiple findings and duplicate rule IDs
+- severity and confidence filtering before serialization
+- config and CLI format selection
+- machine-readable empty output
+
+The suite intentionally does not repeat every detector-rule case in SARIF tests. Detection rules and filtering are already tested independently; SARIF tests focus on serialization and integration boundaries.
+
+---
+
 ## Important Coverage
 
 - supported AST syntax shapes
 - rule matching and multiple classifications
-- config defaults and validation
+- config defaults, lookup, validation, and output formats
 - exact severity/confidence list filters
 - JSON output remains pure JSON
+- SARIF output remains one pure JSON object
 - text output includes readable finding details
 - redaction works in text and JSON
+- SARIF never serializes detected values
 - `.sentinelscanignore` suppresses files
 - inline ignores suppress only intended findings
 - invalid CLI choices fail cleanly
@@ -74,11 +109,12 @@ tests/
 
 ## CI
 
-GitHub Actions runs the test suite on push and pull request.
+GitHub Actions runs Black checks, Ruff, pytest, and a CLI smoke test on Ubuntu and Windows with Python 3.11 and 3.12.
 
-Local pre-commit check:
+Local equivalent:
 
 ```bash
-ruff check .
-pytest
+python3 -m black --check .
+python3 -m ruff check .
+python3 -m pytest
 ```

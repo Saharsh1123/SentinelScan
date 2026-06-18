@@ -1,11 +1,13 @@
 """
-Output formatting, filtering, and redaction for SentinelScan.
+Output filtering and rendering for SentinelScan.
 
 Detection always uses original secret values. Redaction is applied only while
-rendering text or JSON output.
+rendering text or JSON output. SARIF rendering is delegated to ``sarif.py`` and
+intentionally omits detected values entirely.
 """
 
 import json
+from sarif import output_sarif
 
 
 def redact_value(value):
@@ -93,21 +95,26 @@ def output_json(filtered_findings, redact_secrets):
     print(json.dumps(json_results, indent=2))
 
 
-def output(filtered_findings, output_format, redact_secrets, files):
-    """
-    Print scan results as JSON or human-readable CLI output.
+def output(filtered_findings, output_format, redact_secrets, files, path):
+    """Print scan results as text, JSON, or SARIF.
 
     Args:
-        filtered_findings (list[Finding]): Findings after optional filtering.
-        output_format (str): Selected output format: `text` or `json`.
-        redact_secrets (bool): Whether to redact detected values.
+        filtered_findings (list[Finding]): Findings after suppression and
+            severity/confidence filtering.
+        output_format (str): Selected format: ``text``, ``json``, or ``sarif``.
+        redact_secrets (bool): Whether to redact values in text or JSON output.
+            SARIF never includes detected values.
         files (list[Path]): Python files included in the scan.
+        path (str | Path): Scan root used for SARIF-relative artifact URIs.
 
     Returns:
         None
     """
     if output_format == "json":
         output_json(filtered_findings, redact_secrets)
+        return
+    elif output_format == "sarif":
+        output_sarif(filtered_findings, path)
         return
 
     print(f"Scanning {len(files)} Python files...")

@@ -10,11 +10,13 @@ SentinelScan is currently a Python-only static-analysis learning project focused
 - AST-based candidate extraction
 - built-in rule engine
 - severity and confidence metadata
-- config file support
-- JSON and text output
-- redaction
+- config file support and CLI precedence
+- text, JSON, and SARIF 2.1.0 output
+- repository-relative SARIF locations
+- redaction for text and JSON output
 - file-level and inline ignores
 - broad pytest coverage
+- Ubuntu and Windows CI across Python 3.11 and 3.12
 
 ---
 
@@ -22,10 +24,11 @@ SentinelScan is currently a Python-only static-analysis learning project focused
 
 - package with `pyproject.toml`
 - console command entry point
-- SARIF output
 - JSONL output
 - configurable rule enable/disable support
-- better docs examples
+- SARIF validation against the official schema in CI
+- SARIF rule help text and remediation guidance
+- stable SARIF fingerprints for alert tracking
 
 ---
 
@@ -34,9 +37,9 @@ SentinelScan is currently a Python-only static-analysis learning project focused
 - scan `.env`, JSON, YAML, TOML, and text files
 - lightweight variable tracking
 - taint-analysis concepts
-- GitHub repository scanning workflow
+- GitHub code-scanning upload workflow
 - performance improvements for larger repos
-- GitHub code scanning integration
+- richer SARIF regions, columns, tags, and metadata
 
 ---
 

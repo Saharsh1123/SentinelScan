@@ -72,6 +72,12 @@ python3 main.py test_dirs --confidence HIGH
 
 ---
 
+## Output Independence
+
+Rules produce the same `Finding` objects regardless of the selected output format. Text, JSON, and SARIF formatting happen only after rule evaluation, suppression, and severity/confidence filtering.
+
+---
+
 ## Limitations
 
 - no variable tracking or data flow

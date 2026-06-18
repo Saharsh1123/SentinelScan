@@ -95,7 +95,7 @@ def test_get_config_normalizes_level_and_output_case(tmp_path, monkeypatch):
         {
             "severity_levels": ["high", "medium"],
             "confidence_levels": ["low"],
-            "output_format": "JSON",
+            "output_format": "SARIF",
         },
     )
 
@@ -103,7 +103,7 @@ def test_get_config_normalizes_level_and_output_case(tmp_path, monkeypatch):
 
     assert config.severity_levels == ["HIGH", "MEDIUM"]
     assert config.confidence_levels == ["LOW"]
-    assert config.output_format == "json"
+    assert config.output_format == "sarif"
 
 
 def test_get_config_rejects_invalid_json(tmp_path, monkeypatch):

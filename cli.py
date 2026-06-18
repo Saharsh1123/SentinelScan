@@ -16,13 +16,13 @@ parser = argparse.ArgumentParser(
 # Required target directory to scan.
 parser.add_argument("path", help="Path to the directory to scan")
 
-# Output findings as chosen output type.
+# Select human-readable text, JSON, or SARIF output.
 parser.add_argument(
     "--format",
     choices=VALID_OUTPUT_FORMATS,
     type=str.lower,
     default=None,
-    help="Output in chosen output format",
+    help="Output format: text, json, or sarif",
 )
 
 # Keep only findings whose severity is in the selected exact level list.
@@ -45,7 +45,7 @@ parser.add_argument(
     help="Only show findings matching one or more selected confidence levels",
 )
 
-# Mask detected secret values in text or JSON output.
+# Mask detected secret values in text or JSON; SARIF omits values entirely.
 parser.add_argument(
     "--redact",
     action="store_true",

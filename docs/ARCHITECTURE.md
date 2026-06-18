@@ -1,6 +1,6 @@
 # Architecture
 
-SentinelScan separates file handling, AST extraction, rule evaluation, suppression, filtering, config, and output formatting.
+SentinelScan separates file handling, AST extraction, rule evaluation, suppression, filtering, config, and output serialization.
 
 ---
 
@@ -8,16 +8,18 @@ SentinelScan separates file handling, AST extraction, rule evaluation, suppressi
 
 ```text
 CLI args
-→ path validation
-→ config loading and merge
-→ .sentinelscanignore filtering
-→ file reading
-→ AST candidate extraction
-→ rule evaluation
-→ inline ignore filtering
-→ severity/confidence filtering
-→ text or JSON output
+-> path validation
+-> config loading and merge
+-> .sentinelscanignore filtering
+-> file reading
+-> AST candidate extraction
+-> rule evaluation
+-> inline ignore filtering
+-> severity/confidence filtering
+-> text, JSON, or SARIF output
 ```
+
+All output formats consume the same filtered `Finding` objects. Output formatting does not affect detection or confidence scoring.
 
 ---
 
@@ -27,12 +29,13 @@ CLI args
 |---|---|
 | `cli.py` | Parse user CLI options |
 | `main.py` | Coordinate the application flow |
-| `config/config.py` | Load and validate `sentinelscan.json` |
+| `config/config.py` | Resolve, load, and validate `sentinelscan.json` |
 | `config/config_model.py` | Define scanner config defaults and allowed values |
 | `scanner.py` | Discover files, scan files, attach file paths |
 | `ignore.py` | Apply `.sentinelscanignore` patterns |
 | `inline_ignore.py` | Suppress findings using inline comments |
-| `output.py` | Filter, redact, and render findings |
+| `output.py` | Filter findings and dispatch text, JSON, or SARIF rendering |
+| `sarif.py` | Convert findings into one SARIF 2.1.0 document |
 | `detectors/ast_analyzer.py` | Extract `Candidate` objects from supported AST shapes |
 | `detectors/rule_engine.py` | Convert matching candidates into findings |
 | `detectors/rules.py` | Define built-in rules |
@@ -66,13 +69,13 @@ entropy
 confidence
 ```
 
-The AST analyzer creates candidates. The rule engine creates findings.
+The AST analyzer creates candidates. The rule engine creates findings. Output modules serialize findings without changing them.
 
 ---
 
 ## Config Flow
 
-`ScannerConfig` starts with safe defaults:
+`ScannerConfig` starts with defaults:
 
 ```text
 severity_levels = LOW, MEDIUM, HIGH
@@ -81,13 +84,42 @@ redact = false
 output_format = text
 ```
 
-Then SentinelScan applies:
+Config resolution:
 
 ```text
-built-in defaults → scan-root sentinelscan.json → explicit CLI options
+scan-root sentinelscan.json
+    otherwise current-working-directory sentinelscan.json
+    otherwise built-in defaults
 ```
 
-CLI options win only when explicitly provided.
+Explicit CLI options override the selected config only when provided.
+
+---
+
+## SARIF Serialization
+
+SARIF output is one top-level object containing one analysis run.
+
+```text
+SARIF document
+└── runs[0]
+    ├── tool.driver
+    │   ├── name = SentinelScan
+    │   └── rules[]
+    └── results[]
+```
+
+`rules` contains one definition per unique `rule_id`. `results` contains one entry per finding, including repeated findings from the same rule.
+
+SentinelScan maps severity values as follows:
+
+```text
+LOW -> note
+MEDIUM -> warning
+HIGH -> error
+```
+
+Result file URIs are made relative to the scan root and normalized with `/`. SARIF descriptions use rule reasons and intentionally omit detected secret values.
 
 ---
 
@@ -107,6 +139,6 @@ Unsupported syntax is ignored instead of crashing the scan.
 
 ## Suppression
 
-`.sentinelscanignore` runs before scanning files.
+`.sentinelscanignore` runs before files are scanned.
 
 Inline ignores run after findings are created and can suppress all findings on a line or only specific rule IDs.

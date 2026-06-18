@@ -39,7 +39,7 @@ if __name__ == "__main__":
         results = scan(files)
 
         filtered_findings = filter_results(results, chosen_severity, chosen_confidence)
-        output(filtered_findings, output_format, redact_secrets, files)
+        output(filtered_findings, output_format, redact_secrets, files, path)
 
     except FileNotFoundError as e:
         # Report invalid paths without showing a traceback.

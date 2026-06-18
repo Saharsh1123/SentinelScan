@@ -47,4 +47,4 @@ def test_config_constants_match_supported_values():
     Shared constants should expose the supported config values.
     """
     assert VALID_LEVELS == ("LOW", "MEDIUM", "HIGH")
-    assert VALID_OUTPUT_FORMATS == ("text", "json")
+    assert VALID_OUTPUT_FORMATS == ("text", "json", "sarif")

@@ -2,7 +2,7 @@
 
 SentinelScan is a Python CLI static-analysis tool that scans Python codebases for hardcoded secrets.
 
-It uses Python AST parsing to extract candidate values, applies a small rule engine, and reports findings with file path, line number, rule ID, severity, confidence, reason, variable name, and value.
+It uses Python AST parsing to extract candidate values, applies a rule engine, and reports findings with file path, line number, rule ID, severity, confidence, reason, variable name, and value metadata.
 
 > SentinelScan is a learning-focused project. It is not a replacement for mature tools such as GitHub secret scanning, Gitleaks, TruffleHog, Semgrep, or CodeQL.
 
@@ -23,17 +23,17 @@ It uses Python AST parsing to extract candidate values, applies a small rule eng
   - multiple assignment targets
 - Detects passwords, API keys, tokens, generic secrets, and AWS access keys
 - Reports severity, confidence, entropy, rule metadata, and reason
-- Supports text output, JSON output, redaction, filters, and config files
-- Includes pytest coverage and GitHub Actions CI
+- Supports human-readable text, machine-readable JSON, and SARIF 2.1.0 output
+- Supports exact severity and confidence filters, output redaction, and project config files
+- Includes pytest coverage, pre-commit hooks, and GitHub Actions CI on Ubuntu and Windows
 
 ---
 
 ## Requirements
 
 - Python 3.11+
-- `pytest` for tests
-- `ruff` for linting/formatting
 - No third-party runtime dependencies
+- Development tools from `requirements-dev.txt`
 
 ---
 
@@ -44,59 +44,63 @@ git clone https://github.com/Saharsh1123/SentinelScan.git
 cd SentinelScan
 python3 -m venv venv
 source venv/bin/activate
-python3 -m pip install pytest ruff
+python3 -m pip install -r requirements-dev.txt
 ```
 
 ---
 
 ## Quick Start
 
-Scan a directory:
+Scan a directory with text output:
 
 ```bash
 python3 main.py ./your_directory
 ```
 
-Scan the fixture directory:
+Generate JSON:
 
 ```bash
-python3 main.py test_dirs
+python3 main.py ./your_directory --format json
 ```
 
-JSON output:
+Generate SARIF 2.1.0:
 
 ```bash
-python3 main.py test_dirs --json
+python3 main.py ./your_directory --format sarif
 ```
 
 Filter exact levels:
 
 ```bash
-python3 main.py test_dirs --severity HIGH MEDIUM --confidence HIGH
+python3 main.py ./your_directory \
+  --severity HIGH MEDIUM \
+  --confidence HIGH
 ```
 
-Redact values:
+Redact values in text or JSON output:
 
 ```bash
-python3 main.py test_dirs --redact
+python3 main.py ./your_directory --redact
 ```
+
+SARIF output never serializes detected secret values, regardless of the redaction flag.
 
 ---
 
 ## Config File
 
-SentinelScan can read `sentinelscan.json` from the scan root.
+SentinelScan first checks the scan root for `sentinelscan.json`. If none exists there, it checks the current working directory.
 
 ```json
 {
   "severity_levels": ["HIGH", "MEDIUM"],
   "confidence_levels": ["HIGH"],
   "redact": true,
-  "output_format": "json"
+  "output_format": "sarif"
 }
 ```
 
-CLI options override config values when explicitly provided.
+Supported output formats are `text`, `json`, and `sarif`. Explicit CLI options override config values.
 
 ---
 
@@ -107,7 +111,7 @@ Scanning 4 Python files...
 
 --- Findings ---
 
-[HIGH] test_dirs/test_repo/open_vulns.py:4 AWS Access Key → AKIAEXAMPLE123456789
+[HIGH] test_dirs/test_repo/open_vulns.py:4 AWS Access Key -> AKIAEXAMPLE123456789
        Confidence: HIGH
        Reason: value matched AKIA-prefixed AWS access key pattern
 
@@ -135,7 +139,30 @@ Total findings: 1
 ]
 ```
 
-JSON mode prints only valid JSON.
+JSON mode prints only JSON.
+
+---
+
+## SARIF Output
+
+SARIF output is a single SARIF 2.1.0 JSON document. It contains:
+
+- one analysis run produced by `SentinelScan`
+- one rule definition per unique rule ID
+- one result per finding
+- SARIF levels mapped from SentinelScan severity:
+  - `LOW` to `note`
+  - `MEDIUM` to `warning`
+  - `HIGH` to `error`
+- file URIs relative to the scan root and normalized with `/`
+- source line numbers
+- descriptive messages without detected secret values
+
+Redirect the report to a file for CI or later GitHub code-scanning integration:
+
+```bash
+python3 main.py ./your_directory --format sarif > sentinelscan.sarif
+```
 
 ---
 
@@ -143,12 +170,12 @@ JSON mode prints only valid JSON.
 
 | Document | Purpose |
 |---|---|
-| [`docs/USAGE.md`](docs/USAGE.md) | CLI usage, config, output, filtering, redaction |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Pipeline, modules, models |
+| [`docs/USAGE.md`](docs/USAGE.md) | CLI usage, config, output formats, filtering, redaction, suppression |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Pipeline, modules, models, SARIF serialization |
 | [`docs/DETECTION_RULES.md`](docs/DETECTION_RULES.md) | Rules, supported syntax, limitations |
-| [`docs/TESTING.md`](docs/TESTING.md) | Test layout and test strategy |
-| [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) | Local setup and workflow |
-| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Future improvements |
+| [`docs/TESTING.md`](docs/TESTING.md) | Test layout, SARIF coverage, and CI strategy |
+| [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) | Local setup, pre-commit, and development workflow |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Current capabilities and future improvements |
 
 ---
 
@@ -156,6 +183,7 @@ JSON mode prints only valid JSON.
 
 ```text
 SentinelScan/
+├── .github/workflows/
 ├── config/
 ├── detectors/
 ├── docs/
@@ -166,20 +194,34 @@ SentinelScan/
 ├── inline_ignore.py
 ├── main.py
 ├── output.py
+├── sarif.py
 └── scanner.py
 ```
 
-Generated files such as `__pycache__/`, `.pytest_cache/`, `.ruff_cache/`, `venv/`, and ZIP archives should not be committed.
+Generated files such as `__pycache__/`, `.pytest_cache/`, `.ruff_cache/`, virtual environments, SARIF reports, and ZIP archives should not be committed.
 
 ---
 
 ## Testing and Linting
 
 ```bash
-ruff check .
-pytest
+python3 -m black --check .
+python3 -m ruff check .
+python3 -m pytest
+```
+
+Focused SARIF tests:
+
+```bash
+python3 -m pytest tests/test_output/test_sarif_output.py tests/test_cli/test_cli_sarif.py
+```
+
+Manual smoke tests:
+
+```bash
 python3 main.py test_dirs
-python3 main.py test_dirs --json --severity HIGH --confidence HIGH --redact
+python3 main.py test_dirs --format json
+python3 main.py test_dirs --format sarif
 ```
 
 ---
@@ -191,6 +233,7 @@ python3 main.py test_dirs --json --severity HIGH --confidence HIGH --redact
 - Does not follow values across variables
 - Does not scan `.env`, JSON, YAML, TOML, or generic text files
 - Does not perform multi-file data-flow analysis or taint analysis
+- SARIF V1 does not yet include fingerprints, remediation guidance, column ranges, or upload automation
 - Can produce false positives or false negatives
 
 ---

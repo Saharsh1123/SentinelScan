@@ -31,26 +31,27 @@ def test_cli_redact_flag_sets_true_when_provided(monkeypatch):
     assert args.redact is True
 
 
-def test_cli_format_accepts_json(monkeypatch):
-    """
-    --format json should explicitly select JSON output.
-    """
-    monkeypatch.setattr(sys, "argv", ["main.py", "test_dirs", "--format", "json"])
+@pytest.mark.parametrize("output_format", ["text", "json", "sarif"])
+def test_cli_format_accepts_all_supported_formats(monkeypatch, output_format):
+    """--format should accept every output format exposed by SentinelScan."""
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["main.py", "test_dirs", "--format", output_format],
+    )
 
     args = return_args()
 
-    assert args.format == "json"
+    assert args.format == output_format
 
 
 def test_cli_format_normalizes_mixed_case(monkeypatch):
-    """
-    --format should accept mixed-case input and normalize it to lowercase.
-    """
-    monkeypatch.setattr(sys, "argv", ["main.py", "test_dirs", "--format", "JSON"])
+    """--format should accept mixed-case input and normalize it to lowercase."""
+    monkeypatch.setattr(sys, "argv", ["main.py", "test_dirs", "--format", "SaRiF"])
 
     args = return_args()
 
-    assert args.format == "json"
+    assert args.format == "sarif"
 
 
 @pytest.mark.parametrize("bad_format", ["xml", "yaml", "banana"])
