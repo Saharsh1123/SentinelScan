@@ -6,11 +6,13 @@ scanning, filtering, and output rendering. Scanner and detector internals stay
 in their own modules.
 """
 
+import sys
 from cli import return_args
 from config.config import get_config
 from output import filter_results, output
 from scanner import check_path, list_python_files, scan
 from exit_codes import ExitCode
+from exceptions import ExpectedUserError
 
 
 def main() -> int:
@@ -51,9 +53,14 @@ def main() -> int:
 
         return ExitCode.SUCCESS
 
-    except FileNotFoundError as e:
+    except ExpectedUserError as e:
         # Report invalid paths without showing a traceback.
-        print(f"[ERROR] {e}")
+        print(f"[ERROR] {e}", file=sys.stderr)
+        return ExitCode.INVALID_USAGE
+
+    except Exception as e:
+        print(f"[INTERNAL ERROR] {e}", file=sys.stderr)
+        return ExitCode.INTERNAL_ERROR
 
 
 if __name__ == "__main__":

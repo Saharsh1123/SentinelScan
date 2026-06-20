@@ -12,6 +12,7 @@ from pathlib import Path
 from detectors.find_secrets import detect_ast_secrets
 from ignore import filter_ignored_files, load_ignore_patterns
 from inline_ignore import finding_has_inline_ignore
+from exceptions import ExpectedUserError
 
 
 def check_path(input_path):
@@ -32,7 +33,7 @@ def check_path(input_path):
     if path.is_dir():
         return path
 
-    raise FileNotFoundError(f"'{input_path}' does not exist or is not a directory!")
+    raise ExpectedUserError(f"'{input_path}' does not exist or is not a directory")
 
 
 def list_python_files(path):
