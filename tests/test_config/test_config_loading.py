@@ -4,6 +4,7 @@ import pytest
 
 from config.config import get_config
 from config.config_model import ScannerConfig
+from exceptions import ExpectedUserError
 
 
 def write_config(tmp_path, data):
@@ -115,7 +116,7 @@ def test_get_config_rejects_invalid_json(tmp_path, monkeypatch):
     config_file = tmp_path / "sentinelscan.json"
     config_file.write_text("{ invalid json", encoding="utf-8")
 
-    with pytest.raises(json.JSONDecodeError):
+    with pytest.raises(ExpectedUserError):
         get_config()
 
 

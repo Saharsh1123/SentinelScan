@@ -15,6 +15,7 @@ import json
 from pathlib import Path
 
 from config.config_model import ScannerConfig, VALID_LEVELS, VALID_OUTPUT_FORMATS
+from exceptions import ExpectedUserError
 
 CONFIG_FILE_NAME = "sentinelscan.json"
 
@@ -141,7 +142,13 @@ def get_config(scan_path=None):
         return ScannerConfig()
 
     with open(path, "r", encoding="utf-8") as f:
-        raw_config = json.load(f)
+        try:
+            raw_config = json.load(f)
+        except json.JSONDecodeError as e:
+            raise ExpectedUserError(
+                f"Invalid JSON in config at line {e.lineno}, column {e.colno}: "
+                f"{e.msg}"
+            ) from e
 
     if not isinstance(raw_config, dict):
         raise ValueError("sentinelscan.json must contain a JSON object")
