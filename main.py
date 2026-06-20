@@ -10,8 +10,10 @@ from cli import return_args
 from config.config import get_config
 from output import filter_results, output
 from scanner import check_path, list_python_files, scan
+from exit_codes import ExitCode
 
-if __name__ == "__main__":
+
+def main() -> int:
     try:
         args = return_args()
 
@@ -44,6 +46,15 @@ if __name__ == "__main__":
         filtered_findings = filter_results(results, chosen_severity, chosen_confidence)
         output(filtered_findings, output_format, show_secrets, files, path)
 
+        if filtered_findings:
+            return ExitCode.FINDINGS
+
+        return ExitCode.SUCCESS
+
     except FileNotFoundError as e:
         # Report invalid paths without showing a traceback.
         print(f"[ERROR] {e}")
+
+
+if __name__ == "__main__":
+    SystemExit(main())
