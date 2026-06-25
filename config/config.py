@@ -133,7 +133,7 @@ def get_config(scan_path=None):
         ScannerConfig: Validated scanner configuration.
 
     Raises:
-        json.JSONDecodeError: If the config file is not valid JSON.
+        ExpectedUserError: If the config file is not valid JSON.
         ValueError: If a supported field has an invalid type or value.
     """
     path = _config_path(scan_path)

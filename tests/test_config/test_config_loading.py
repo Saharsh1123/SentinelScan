@@ -110,14 +110,16 @@ def test_get_config_normalizes_level_and_output_case(tmp_path, monkeypatch):
 
 
 def test_get_config_rejects_invalid_json(tmp_path, monkeypatch):
-    """Malformed JSON should fail instead of silently using defaults."""
+    """Malformed JSON should become a user-correctable config error."""
     monkeypatch.chdir(tmp_path)
 
     config_file = tmp_path / "sentinelscan.json"
     config_file.write_text("{ invalid json", encoding="utf-8")
 
-    with pytest.raises(ExpectedUserError):
+    with pytest.raises(ExpectedUserError, match="Invalid JSON in config") as exc_info:
         get_config()
+
+    assert isinstance(exc_info.value.__cause__, json.JSONDecodeError)
 
 
 def test_get_config_rejects_non_object_json(tmp_path, monkeypatch):

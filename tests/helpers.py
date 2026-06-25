@@ -4,6 +4,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from exit_codes import ExitCode
+
 PASSWORD_REASON = (
     "variable name matched password/pwd/passwd pattern and value met minimum length"
 )
@@ -48,13 +50,16 @@ def run_cli(*args, cwd=None):
 
 def assert_success(result):
     """
-    Assert that a CLI command completed successfully.
+    Assert that a CLI scan completed without a usage or internal error.
+
+    A completed scan may return SUCCESS when no findings remain after
+    filtering or FINDINGS when the scan produced policy-relevant findings.
 
     Includes stdout/stderr in the failure message to make CLI failures easier
     to debug.
     """
-    assert result.returncode == 0, (
-        f"Expected CLI command to succeed.\n"
+    assert result.returncode in (ExitCode.SUCCESS, ExitCode.FINDINGS), (
+        f"Expected CLI scan to complete.\n"
         f"STDOUT:\n{result.stdout}\n"
         f"STDERR:\n{result.stderr}"
     )

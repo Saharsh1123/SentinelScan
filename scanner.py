@@ -26,7 +26,7 @@ def check_path(input_path):
         Path: Valid directory path.
 
     Raises:
-        FileNotFoundError: If the path does not exist or is not a directory.
+        ExpectedUserError: If the path does not exist or is not a directory.
     """
     path = Path(input_path)
 

@@ -1,5 +1,24 @@
-from scanner import scan, scan_file
+import pytest
+
+from exceptions import ExpectedUserError
+from scanner import check_path, scan, scan_file
 from tests.helpers import write_python_file
+
+
+def test_check_path_rejects_nonexistent_path(tmp_path):
+    """Missing scan paths should be classified as user-correctable errors."""
+    missing_path = tmp_path / "does_not_exist"
+
+    with pytest.raises(ExpectedUserError, match="does not exist or is not a directory"):
+        check_path(missing_path)
+
+
+def test_check_path_rejects_file_path(tmp_path):
+    """Existing files should not be accepted as scan directories."""
+    file_path = write_python_file(tmp_path, "not_a_directory.py", "pass\n")
+
+    with pytest.raises(ExpectedUserError, match="does not exist or is not a directory"):
+        check_path(file_path)
 
 
 def test_scan_file_returns_findings_for_single_file(tmp_path):
