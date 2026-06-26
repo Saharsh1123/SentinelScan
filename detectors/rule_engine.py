@@ -48,7 +48,7 @@ def apply_rules(candidate):
             )
 
         # Match suspicious variable names and enforce minimum value length.
-        if rule.var_patterns:
+        elif rule.var_patterns:
             confidence = calculate_confidence(val)
 
             for var_pattern in rule.var_patterns:
@@ -72,5 +72,6 @@ def apply_rules(candidate):
                             confidence=confidence,
                         )
                     )
+                    break
 
     return findings

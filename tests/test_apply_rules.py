@@ -1,4 +1,6 @@
-from detectors.models import Candidate
+import re
+
+from detectors.models import Candidate, Rule
 from detectors.rule_engine import apply_rules
 
 PASSWORD_REASON = (
@@ -129,6 +131,45 @@ def test_passwd_alias_match():
         reason=PASSWORD_REASON,
         confidence="LOW",
     )
+
+
+def test_rule_emits_once_when_multiple_var_patterns_match():
+    candidate = make_candidate(
+        "password_pwd",
+        "not-a-placeholder-secret",
+    )
+
+    result = apply_rules(candidate)
+
+    assert [finding.rule_id for finding in result] == ["PASSWORD"]
+
+
+def test_rule_emits_once_when_value_and_var_patterns_match(monkeypatch):
+    combined_rule = Rule(
+        rule_id="COMBINED",
+        rule_name="Combined",
+        severity="HIGH",
+        reason="matched combined test rule",
+        var_patterns=[re.compile(r"token", re.IGNORECASE)],
+        value_pattern=re.compile(r"COMBINED-[A-Z0-9]+"),
+        min_length=4,
+    )
+
+    monkeypatch.setattr(
+        "detectors.rule_engine.RULES",
+        [combined_rule],
+    )
+
+    candidate = make_candidate(
+        "token",
+        "COMBINED-ABC123",
+    )
+
+    result = apply_rules(candidate)
+
+    assert len(result) == 1
+    assert result[0].rule_id == "COMBINED"
+    assert result[0].confidence == "HIGH"
 
 
 # Ensure similar but unrelated variable names are not flagged
