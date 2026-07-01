@@ -1,5 +1,5 @@
 {
   "confidence_levels": ["LOW", "MEDIUM", "HIGH"],
   "severity_levels": ["LOW", "MEDIUM", "HIGH"],
-  "output_ormat": "text"
+  "output_format": "text"
 }

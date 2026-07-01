@@ -15,18 +15,9 @@ SUPPORTED_CONFIDENCE = {"LOW", "MEDIUM", "HIGH"}
 
 def get_entropy(finding):
     """
-    Return entropy metadata from a Finding.
-
-    Supports either `entropy` or `entropy_score` if the field name changes
-    during refactoring.
+    Return entropy metadata from a Finding using the current field name.
     """
-    if hasattr(finding, "entropy"):
-        return finding.entropy
-
-    if hasattr(finding, "entropy_score"):
-        return finding.entropy_score
-
-    raise AssertionError("Finding is missing entropy metadata")
+    return finding.entropy
 
 
 def assert_entropy_metadata(finding):

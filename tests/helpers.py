@@ -13,7 +13,18 @@ TOKEN_REASON = "variable name matched token pattern and value met minimum length
 AWS_REASON = "value matched AKIA-prefixed AWS access key pattern"
 
 SUPPORTED_CONFIDENCE = {"LOW", "MEDIUM", "HIGH"}
-SUPPORTED_SEVERITY = {"LOW", "MEDIUM", "HIGH"}
+JSON_FINDING_KEYS = {
+    "line",
+    "file",
+    "var_name",
+    "rule_id",
+    "rule",
+    "severity",
+    "value",
+    "reason",
+    "entropy",
+    "confidence",
+}
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -130,18 +141,9 @@ def make_combined_filter_fixture(tmp_path):
 
 def get_entropy(finding):
     """
-    Return entropy from a JSON finding.
-
-    Supports either `entropy` or `entropy_score` if the output field name
-    changes during refactoring.
+    Return entropy from a JSON finding using the current public field name.
     """
-    if "entropy" in finding:
-        return finding["entropy"]
-
-    if "entropy_score" in finding:
-        return finding["entropy_score"]
-
-    raise AssertionError("JSON finding is missing entropy metadata")
+    return finding["entropy"]
 
 
 def assert_entropy_metadata(finding):
@@ -168,8 +170,9 @@ def assert_json_finding(
     confidence=None,
 ):
     """
-    Assert stable JSON finding fields while allowing extra future fields.
+    Assert the current JSON finding contract exactly.
     """
+    assert set(finding) == JSON_FINDING_KEYS
     assert finding["line"] == line
     assert finding["file"] == str(file)
     assert finding["var_name"] == var_name

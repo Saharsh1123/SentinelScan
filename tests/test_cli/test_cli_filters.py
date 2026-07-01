@@ -1,12 +1,9 @@
-import pytest
-
 from tests.helpers import (
     AWS_REASON,
     PASSWORD_REASON,
     TOKEN_REASON,
     assert_single_json_finding,
     assert_success,
-    get_entropy,
     make_combined_filter_fixture,
     make_confidence_fixture,
     make_severity_fixture,
@@ -14,21 +11,6 @@ from tests.helpers import (
     run_cli,
     write_python_file,
 )
-
-
-@pytest.mark.parametrize("severity", ["HIGH", "MEDIUM"])
-def test_cli_json_severity_filter_keeps_only_matching_severity(tmp_path, severity):
-    make_severity_fixture(tmp_path)
-
-    result = run_cli(tmp_path, "--format", "json", "--severity", severity)
-    assert_success(result)
-
-    data = parse_json_output(result)
-
-    assert len(data) > 0
-    assert all(finding["severity"] == severity for finding in data)
-    assert all("confidence" in finding for finding in data)
-    assert all(get_entropy(finding) >= 0 for finding in data)
 
 
 def test_cli_json_severity_high_filter_exact_result(tmp_path):
@@ -123,23 +105,6 @@ def test_cli_text_severity_filter_with_no_matching_findings(tmp_path):
     assert "No vulnerabilities found." in result.stdout
     assert "Reason:" not in result.stdout
     assert "Confidence:" not in result.stdout
-
-
-@pytest.mark.parametrize("confidence", ["LOW", "MEDIUM", "HIGH"])
-def test_cli_json_confidence_filter_keeps_only_matching_confidence(
-    tmp_path,
-    confidence,
-):
-    make_confidence_fixture(tmp_path)
-
-    result = run_cli(tmp_path, "--format", "json", "--confidence", confidence)
-    assert_success(result)
-
-    data = parse_json_output(result)
-
-    assert len(data) > 0
-    assert all(finding["confidence"] == confidence for finding in data)
-    assert all(get_entropy(finding) >= 0 for finding in data)
 
 
 def test_cli_json_confidence_low_filter_exact_result(tmp_path):
@@ -348,7 +313,6 @@ def test_cli_json_multiple_severity_levels_include_exact_matches(tmp_path):
     data = parse_json_output(result)
 
     assert {finding["severity"] for finding in data} == {"HIGH", "MEDIUM"}
-    assert all(finding["severity"] in {"HIGH", "MEDIUM"} for finding in data)
 
 
 def test_cli_json_multiple_confidence_levels_include_exact_matches(tmp_path):
@@ -363,4 +327,3 @@ def test_cli_json_multiple_confidence_levels_include_exact_matches(tmp_path):
     data = parse_json_output(result)
 
     assert {finding["confidence"] for finding in data} == {"LOW", "HIGH"}
-    assert all(finding["confidence"] in {"LOW", "HIGH"} for finding in data)
