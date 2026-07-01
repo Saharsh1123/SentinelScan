@@ -1,3 +1,4 @@
+from detectors.ast_analyzer import extract_candidates
 from tests.test_ast.ast_helpers import (
     API_KEY_REASON,
     AWS_REASON,
@@ -177,14 +178,14 @@ def test_ast_syntax_error_returns_empty_list():
     assert result == []
 
 
-def test_ast_uppercase_variable_is_normalized():
+def test_ast_preserves_uppercase_variable_name():
     code = 'PASSWORD = "abcdef"'
     result = detect_ast_secrets(code)
 
     assert_single_finding(
         result,
         line_number=1,
-        var_name="password",
+        var_name="PASSWORD",
         value="abcdef",
         rule_id="PASSWORD",
         rule_name="Password",
@@ -192,6 +193,13 @@ def test_ast_uppercase_variable_is_normalized():
         reason=PASSWORD_REASON,
         confidence="LOW",
     )
+
+
+def test_ast_preserves_camel_case_candidate_name():
+    candidates = list(extract_candidates('notPassword = "abcdef"'))
+
+    assert len(candidates) == 1
+    assert candidates[0].var_name == "notPassword"
 
 
 def test_ast_multiple_targets():

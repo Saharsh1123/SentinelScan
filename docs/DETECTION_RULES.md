@@ -28,7 +28,24 @@ Rules can match by:
 | `TOKEN` | MEDIUM | name contains `token` |
 | `SECRET` | MEDIUM | name contains `secret` |
 
-A single candidate can match multiple rules.
+A single candidate can match multiple rules. Each rule emits at most one finding per candidate, even when multiple aliases in that rule match.
+
+---
+
+## Name Context
+
+The AST extractor preserves source spelling so the rule engine can split snake_case, camelCase, PascalCase, and acronym-based names into semantic tokens.
+
+Name-based findings are suppressed only for explicit absence context, including short compound names:
+
+```text
+not_password
+password_not_set
+missing_access_token
+NoApiKey
+```
+
+Low-confidence context such as `test_password` lowers confidence but does not suppress the finding. Ambiguous or dangerous negation such as `password_not_rotated` still reports. Structured value-pattern matches are never suppressed by variable-name context.
 
 ---
 

@@ -1,5 +1,5 @@
 {
-  "confidence_levels": ["MEDIUM", "HIGH"],
-  "severity_levels": ["MEDIUM", "HIGH"],
+  "confidence_levels": ["LOW", "MEDIUM", "HIGH"],
+  "severity_levels": ["LOW", "MEDIUM", "HIGH"],
   "output_format": "text"
 }

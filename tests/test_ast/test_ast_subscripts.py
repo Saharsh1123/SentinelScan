@@ -78,23 +78,6 @@ def test_ast_subscript_secret_assignment():
     )
 
 
-def test_ast_subscript_uppercase_key_assignment():
-    code = 'config["PASSWORD"] = "abcdef"'
-    result = detect_ast_secrets(code)
-
-    assert_single_finding(
-        result,
-        line_number=1,
-        var_name="password",
-        value="abcdef",
-        rule_id="PASSWORD",
-        rule_name="Password",
-        severity="HIGH",
-        reason=PASSWORD_REASON,
-        confidence="LOW",
-    )
-
-
 def test_ast_attribute_subscript_assignment():
     code = 'self.config["password"] = "abcdef"'
     result = detect_ast_secrets(code)

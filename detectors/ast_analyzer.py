@@ -1,9 +1,9 @@
 """
 AST-based candidate extraction for SentinelScan.
 
-This module translates supported Python syntax into normalized `Candidate`
-objects. It does not decide whether a candidate is a vulnerability; that is the
-rule engine's job.
+This module translates supported Python syntax into `Candidate` objects while
+preserving source variable and key spelling. It does not decide whether a
+candidate is a vulnerability; that is the rule engine's job.
 """
 
 import ast
@@ -97,7 +97,7 @@ def extract_candidates_from_dict(dict_node):
 
         yield Candidate(
             line_number=getattr(value_node, "lineno", getattr(dict_node, "lineno", 0)),
-            var_name=key_node.value.lower(),
+            var_name=key_node.value,
             value=value_node.value,
         )
 
@@ -135,7 +135,7 @@ def extract_candidates_from_function_call(call_node):
             line_number=getattr(
                 keyword.value, "lineno", getattr(call_node, "lineno", 0)
             ),
-            var_name=keyword.arg.lower(),
+            var_name=keyword.arg,
             value=keyword.value.value,
         )
 
@@ -187,7 +187,7 @@ def extract_target_nodes(node):
 
 def extract_variable_path_from_target(target):
     """
-    Extract normalized variable paths from assignment targets.
+    Extract source-preserving variable paths from assignment targets.
 
     Supports simple variables, nested attributes, and string subscript keys:
         password = "secret"
@@ -198,24 +198,24 @@ def extract_variable_path_from_target(target):
         target (ast.AST): Assignment target node.
 
     Yields:
-        list[str]: Lowercased variable path components.
+        list[str]: Variable path components with their original spelling.
     """
     full_path = []
     temp_node = target
 
     if isinstance(temp_node, ast.Attribute):
         while isinstance(temp_node, ast.Attribute):
-            full_path.append(temp_node.attr.lower())
+            full_path.append(temp_node.attr)
             temp_node = temp_node.value
 
         if not isinstance(temp_node, ast.Name):
             return
 
-        full_path.append(temp_node.id.lower())
+        full_path.append(temp_node.id)
         full_path.reverse()
 
     elif isinstance(target, ast.Name):
-        full_path.append(target.id.lower())
+        full_path.append(target.id)
 
     elif isinstance(target, ast.Subscript):
         key = target.slice
@@ -223,7 +223,7 @@ def extract_variable_path_from_target(target):
         if not (isinstance(key, ast.Constant) and isinstance(key.value, str)):
             return
 
-        full_path.append(key.value.lower())
+        full_path.append(key.value)
 
     if full_path:
         yield full_path

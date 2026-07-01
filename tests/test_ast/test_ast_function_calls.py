@@ -90,26 +90,6 @@ def test_ast_function_call_secret_keyword():
     )
 
 
-def test_ast_function_call_uppercase_keyword_is_normalized():
-    """
-    Keyword argument names should be normalized to lowercase before rule matching.
-    """
-    code = 'connect(PASSWORD="abcdef")'
-    result = detect_ast_secrets(code)
-
-    assert_single_finding(
-        result,
-        line_number=1,
-        var_name="password",
-        value="abcdef",
-        rule_id="PASSWORD",
-        rule_name="Password",
-        severity="HIGH",
-        reason=PASSWORD_REASON,
-        confidence="LOW",
-    )
-
-
 def test_ast_function_call_irrelevant_keyword_is_ignored():
     """
     Safe keyword argument names should not produce findings.

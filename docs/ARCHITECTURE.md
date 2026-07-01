@@ -36,8 +36,8 @@ All output formats consume the same filtered `Finding` objects. Output formattin
 | `inline_ignore.py` | Suppress findings using inline comments |
 | `output.py` | Filter findings and dispatch text, JSON, or SARIF rendering |
 | `sarif.py` | Convert findings into one SARIF 2.1.0 document |
-| `detectors/ast_analyzer.py` | Extract `Candidate` objects from supported AST shapes |
-| `detectors/rule_engine.py` | Convert matching candidates into findings |
+| `detectors/ast_analyzer.py` | Extract source-preserving `Candidate` objects from supported AST shapes |
+| `detectors/rule_engine.py` | Apply rules and conservative name-context checks |
 | `detectors/rules.py` | Define built-in rules |
 | `detectors/confidence.py` | Calculate entropy and confidence |
 | `detectors/models.py` | Define `Rule`, `Candidate`, and `Finding` |
@@ -69,7 +69,7 @@ entropy
 confidence
 ```
 
-The AST analyzer creates candidates. The rule engine creates findings. Output modules serialize findings without changing detection data; text and JSON mask values unless plaintext display was explicitly requested.
+The AST analyzer creates candidates and preserves source identifier spelling. The rule engine creates findings, suppresses only explicit absence context for name-based matches, and leaves structured value-pattern matches unaffected. Output modules serialize findings without changing detection data; text and JSON mask values unless plaintext display was explicitly requested.
 
 ---
 

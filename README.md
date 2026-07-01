@@ -22,6 +22,7 @@ It uses Python AST parsing to extract candidate values, applies a rule engine, a
   - function keyword arguments with string values
   - multiple assignment targets
 - Detects passwords, API keys, tokens, generic secrets, and AWS access keys
+- Uses token-aware name context to suppress explicit absence names and lower confidence for test-like names
 - Reports severity, confidence, entropy, rule metadata, and reason
 - Supports human-readable text, machine-readable JSON, and SARIF 2.1.0 output
 - Masks secret values by default, supports an explicit `--unsafe-show-secrets` opt-in, and provides exact severity/confidence filters

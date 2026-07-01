@@ -1,5 +1,7 @@
 import re
 
+import pytest
+
 from detectors.models import Candidate, Rule
 from detectors.rule_engine import apply_rules
 
@@ -170,6 +172,59 @@ def test_rule_emits_once_when_value_and_var_patterns_match(monkeypatch):
     assert len(result) == 1
     assert result[0].rule_id == "COMBINED"
     assert result[0].confidence == "HIGH"
+
+
+@pytest.mark.parametrize(
+    "var_name",
+    [
+        "not_password",
+        "password_not_set",
+        "missing_access_token",
+        "token_value_unset",
+        "NoApiKey",
+    ],
+)
+def test_explicit_absence_context_suppresses_name_match(var_name):
+    candidate = make_candidate(var_name, "K9m2Q7v4L8x1P6r3")
+
+    result = apply_rules(candidate)
+
+    assert result == []
+
+
+@pytest.mark.parametrize(
+    ("var_name", "rule_id"),
+    [
+        ("notification_password", "PASSWORD"),
+        ("password_not_rotated", "PASSWORD"),
+        ("not_rotated_access_token", "TOKEN"),
+        ("not_password_real_password", "PASSWORD"),
+    ],
+)
+def test_non_absence_context_still_reports(var_name, rule_id):
+    candidate = make_candidate(var_name, "K9m2Q7v4L8x1P6r3")
+
+    result = apply_rules(candidate)
+
+    assert [finding.rule_id for finding in result] == [rule_id]
+
+
+def test_low_confidence_name_context_does_not_suppress():
+    candidate = make_candidate("test_password", "K9m2Q7v4L8x1P6r3")
+
+    result = apply_rules(candidate)
+
+    assert len(result) == 1
+    assert result[0].rule_id == "PASSWORD"
+    assert result[0].confidence == "LOW"
+
+
+def test_value_pattern_match_is_not_suppressed_by_name_context():
+    candidate = make_candidate("not_api_key", "AKIAEXAMPLE123456789")
+
+    result = apply_rules(candidate)
+
+    assert [finding.rule_id for finding in result] == ["AWS_ACCESS_KEY"]
 
 
 # Ensure similar but unrelated variable names are not flagged

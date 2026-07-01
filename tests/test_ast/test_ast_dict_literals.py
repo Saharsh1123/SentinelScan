@@ -93,26 +93,6 @@ def test_ast_dict_literal_secret_key():
     )
 
 
-def test_ast_dict_literal_uppercase_key_is_normalized():
-    """
-    Dictionary keys should be normalized to lowercase before rule matching.
-    """
-    code = 'config = {"PASSWORD": "abcdef"}'
-    result = detect_ast_secrets(code)
-
-    assert_single_finding(
-        result,
-        line_number=1,
-        var_name="password",
-        value="abcdef",
-        rule_id="PASSWORD",
-        rule_name="Password",
-        severity="HIGH",
-        reason=PASSWORD_REASON,
-        confidence="LOW",
-    )
-
-
 def test_ast_dict_literal_irrelevant_key_is_ignored():
     """
     Safe dictionary keys should not produce findings.

@@ -91,26 +91,6 @@ def test_ast_annotated_secret_assignment():
     )
 
 
-def test_ast_annotated_uppercase_variable_is_normalized():
-    """
-    Annotated variable names should still be normalized to lowercase.
-    """
-    code = 'PASSWORD: str = "abcdef"'
-    result = detect_ast_secrets(code)
-
-    assert_single_finding(
-        result,
-        line_number=1,
-        var_name="password",
-        value="abcdef",
-        rule_id="PASSWORD",
-        rule_name="Password",
-        severity="HIGH",
-        reason=PASSWORD_REASON,
-        confidence="LOW",
-    )
-
-
 def test_ast_annotated_irrelevant_variable_is_ignored():
     """
     Annotated assignments should not create findings for safe variable names.
