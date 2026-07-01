@@ -19,6 +19,7 @@ from exceptions import ExpectedUserError
 
 CONFIG_FILE_NAME = "sentinelscan.json"
 
+VALID_KEYS = {"severity_levels", "confidence_levels", "output_format"}
 _LEVEL_SET = set(VALID_LEVELS)
 _OUTPUT_FORMAT_SET = set(VALID_OUTPUT_FORMATS)
 
@@ -155,6 +156,11 @@ def get_config(scan_path=None):
 
     scanner_config = ScannerConfig()
 
+    unknown_keys = raw_config.keys() - VALID_KEYS
+
+    if unknown_keys:
+        raise ExpectedUserError(f"unknown config keys found: {unknown_keys}")
+
     if "severity_levels" in raw_config:
         scanner_config.severity_levels = _validate_levels(
             "severity_levels",
@@ -167,7 +173,6 @@ def get_config(scan_path=None):
             raw_config["confidence_levels"],
         )
 
-    # Legacy branch pending removal; plaintext output is intended to be CLI-only.
     if "output_format" in raw_config:
         scanner_config.output_format = _validate_output_format(
             raw_config["output_format"]

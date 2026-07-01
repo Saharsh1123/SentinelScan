@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from typing import Literal
 
 Level = Literal["LOW", "MEDIUM", "HIGH"]
-OutputFormat = Literal["text", "json"]
+OutputFormat = Literal["text", "json", "sarif"]
 
 VALID_LEVELS: tuple[Level, ...] = ("LOW", "MEDIUM", "HIGH")
 VALID_OUTPUT_FORMATS: tuple[OutputFormat, ...] = ("text", "json", "sarif")

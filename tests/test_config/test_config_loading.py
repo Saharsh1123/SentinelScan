@@ -56,37 +56,26 @@ def test_get_config_allows_partial_config_file(tmp_path, monkeypatch):
     assert config.output_format == "text"
 
 
-@pytest.mark.parametrize(
-    ("unsupported_key", "value"),
-    [
-        ("redact", True),
-        ("show_secrets", True),
-        ("unknown_setting", "ignored"),
-    ],
-)
-def test_get_config_ignores_unsupported_keys(
-    tmp_path,
-    monkeypatch,
-    unsupported_key,
-    value,
-):
-    """Config files must not enable plaintext output or add unknown fields."""
+def test_get_config_rejects_all_unknown_keys(tmp_path, monkeypatch):
+    """Unknown keys should be reported together as a user-correctable error."""
     monkeypatch.chdir(tmp_path)
 
     write_config(
         tmp_path,
         {
             "severity_levels": ["HIGH"],
-            unsupported_key: value,
+            "severty_levels": ["LOW"],
+            "show_secrets": True,
         },
     )
 
-    config = get_config()
+    with pytest.raises(ExpectedUserError) as exc_info:
+        get_config()
 
-    assert config.severity_levels == ["HIGH"]
-    assert config.show_secrets is False
-    assert not hasattr(config, "redact")
-    assert not hasattr(config, "unknown_setting")
+    message = str(exc_info.value)
+    assert "unknown config keys" in message
+    assert "severty_levels" in message
+    assert "show_secrets" in message
 
 
 def test_get_config_normalizes_level_and_output_case(tmp_path, monkeypatch):

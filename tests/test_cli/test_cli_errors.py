@@ -53,3 +53,17 @@ def test_cli_malformed_config_returns_invalid_usage(tmp_path):
     assert result.stdout == ""
     assert "[ERROR] Invalid JSON in config" in result.stderr
     assert "Traceback" not in result.stderr
+
+
+def test_cli_unknown_config_key_returns_invalid_usage(tmp_path):
+    config_file = tmp_path / "sentinelscan.json"
+    config_file.write_text('{"severty_levels": ["HIGH"]}', encoding="utf-8")
+
+    result = run_cli(tmp_path)
+
+    assert result.returncode == ExitCode.INVALID_USAGE
+    assert result.stdout == ""
+    assert "[ERROR]" in result.stderr
+    assert "unknown config keys" in result.stderr
+    assert "severty_levels" in result.stderr
+    assert "Traceback" not in result.stderr
