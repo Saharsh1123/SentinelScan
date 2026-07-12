@@ -11,6 +11,7 @@ It uses Python AST parsing to extract candidate values, applies a rule engine, a
 ## Features
 
 - Recursively scans Python files under a target directory
+- Continues past unreadable, invalidly encoded, or syntax-invalid Python files and reports them separately in text output
 - Supports `.sentinelscanignore` file-level suppression
 - Supports generic and rule-specific inline ignores
 - Extracts candidates from common Python syntax:
@@ -120,6 +121,26 @@ Total findings: 1
 
 ---
 
+## Skipped Files
+
+A file that cannot be decoded, read, or parsed is recorded as a scan diagnostic rather than a vulnerability. SentinelScan continues scanning the remaining files. Text output renders these records separately:
+
+```text
+Scanning 2 Python files...
+
+--- Skipped ---
+
+File: src/invalid.py
+Reason: syntax_error
+Details: syntax error at 4: invalid syntax
+
+No vulnerabilities found.
+```
+
+A skipped-only scan returns exit code `0`; filtered findings determine exit code `1`. Skipped-file diagnostics are currently text-only and are not included in JSON or SARIF output.
+
+---
+
 ## Example JSON Output
 
 ```json
@@ -210,6 +231,12 @@ python3 -m ruff check .
 python3 -m pytest
 ```
 
+Focused skipped-file tests:
+
+```bash
+python3 -m pytest tests/test_ast/test_ast_parsing.py tests/test_scanner.py tests/test_output/test_text_output.py tests/test_cli/test_cli_output.py
+```
+
 Focused SARIF tests:
 
 ```bash
@@ -233,6 +260,7 @@ python3 main.py test_dirs --format sarif
 - Does not follow values across variables
 - Does not scan `.env`, JSON, YAML, TOML, or generic text files
 - Does not perform multi-file data-flow analysis or taint analysis
+- JSON and SARIF currently omit skipped-file diagnostics
 - SARIF V1 does not yet include fingerprints, remediation guidance, column ranges, or upload automation
 - Can produce false positives or false negatives
 

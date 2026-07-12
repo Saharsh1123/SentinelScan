@@ -43,10 +43,12 @@ def main() -> int:
         )
 
         files = list_python_files(path)
-        results = scan(files)
+        results, skipped_files = scan(files)
 
         filtered_findings = filter_results(results, chosen_severity, chosen_confidence)
-        output(filtered_findings, output_format, show_secrets, files, path)
+        output(
+            filtered_findings, skipped_files, output_format, show_secrets, files, path
+        )
 
         if filtered_findings:
             return ExitCode.FINDINGS

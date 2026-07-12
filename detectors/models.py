@@ -1,13 +1,13 @@
 """
 Shared dataclass models used by SentinelScan.
 
-The scanner uses a two-stage model:
-1. AST extraction produces `Candidate` objects.
-2. Rule evaluation converts matching candidates into `Finding` objects.
+The detection pipeline uses `Candidate` objects as rule-engine inputs and
+`Finding` objects as confirmed matches. `SkippedFile` is a separate diagnostic
+channel for files that could not be analyzed safely.
 """
 
-from dataclasses import dataclass, field
 import re
+from dataclasses import dataclass, field
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -60,3 +60,12 @@ class Finding:
     reason: str
     entropy: int | float | None = None
     confidence: str
+
+
+@dataclass(kw_only=True)
+class SkippedFile:
+    """Describe a file SentinelScan could not read or parse safely."""
+
+    path: str | None = None
+    reason: str
+    message: str

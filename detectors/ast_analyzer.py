@@ -9,28 +9,33 @@ candidate is a vulnerability; that is the rule engine's job.
 import ast
 import textwrap
 
-from detectors.models import Candidate
+from detectors.models import Candidate, SkippedFile
 
 
-def parse_ast(file):
+def parse_ast(source_code):
     """
-    Parse Python source code into an AST.
+    Parse Python source code or describe why parsing was skipped.
 
     Dedenting keeps multiline test strings parseable without affecting normal
-    files. Syntax errors are ignored so one invalid file does not crash a scan.
+    files. The parser records syntax details but does not know the source path;
+    the scanner attaches that path later.
 
     Args:
-        file (str): Raw Python source code.
+        source_code (str): Raw Python source code.
 
     Returns:
-        ast.AST | None: Parsed AST object, or None if parsing fails.
+        tuple[ast.Module | None, SkippedFile | None]: Parsed syntax tree on
+            success, or a structured syntax-error diagnostic on failure.
     """
-    file = textwrap.dedent(file)
+    source_code = textwrap.dedent(source_code)
 
     try:
-        return ast.parse(file)
-    except SyntaxError:
-        return None
+        return ast.parse(source_code), None
+    except SyntaxError as error:
+        return None, SkippedFile(
+            reason="syntax_error",
+            message=f"syntax error at {error.lineno}: {error.msg}",
+        )
 
 
 def get_assignments(tree):
@@ -249,9 +254,9 @@ def extract_assignment_candidates(node, value):
             )
 
 
-def extract_candidates(code):
+def extract_candidates(tree):
     """
-    Yield candidate secret values extracted from Python source code.
+    Yield candidate secret values from a successfully parsed syntax tree.
 
     Supports:
     - normal string assignments
@@ -260,18 +265,15 @@ def extract_candidates(code):
     - dictionary literals with string key/value pairs
     - function calls with string keyword arguments
 
-    Syntax errors and unsupported syntax shapes are ignored.
+    Unsupported AST shapes are ignored. Syntax failures are handled by
+    `parse_ast()` before this generator is called.
 
     Args:
-        code (str): Raw Python source code.
+        tree (ast.AST): Parsed Python syntax tree.
 
     Yields:
         Candidate: Extracted variable name, value, and line number.
     """
-    tree = parse_ast(code)
-    if tree is None:
-        return
-
     for node in get_assignments(tree):
         if isinstance(node.value, ast.Dict):
             yield from extract_candidates_from_dict(node.value)

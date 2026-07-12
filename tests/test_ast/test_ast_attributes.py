@@ -3,13 +3,13 @@ from tests.test_ast.ast_helpers import (
     PASSWORD_REASON,
     TOKEN_REASON,
     assert_single_finding,
-    detect_ast_secrets,
+    detect_findings,
 )
 
 
 def test_ast_attribute_password():
     code = 'self.password = "abcdef"'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert_single_finding(
         result,
@@ -26,7 +26,7 @@ def test_ast_attribute_password():
 
 def test_ast_attribute_api_key():
     code = 'config.api_key = "12345678"'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert_single_finding(
         result,
@@ -42,7 +42,7 @@ def test_ast_attribute_api_key():
 
 def test_ast_attribute_token():
     code = 'user.token = "qwerty123"'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert_single_finding(
         result,
@@ -58,7 +58,7 @@ def test_ast_attribute_token():
 
 def test_ast_nested_attribute_password():
     code = 'self.config.db.password = "abcdef"'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert_single_finding(
         result,
@@ -75,7 +75,7 @@ def test_ast_nested_attribute_password():
 
 def test_ast_deep_nested_attribute_api_key():
     code = 'settings.auth.credentials.api_key = "12345678"'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert_single_finding(
         result,

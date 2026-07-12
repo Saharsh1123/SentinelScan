@@ -11,15 +11,19 @@ CLI args
 -> path validation
 -> config loading and merge
 -> .sentinelscanignore filtering
--> file reading
--> AST candidate extraction
+-> Python-aware source decoding
+-> structured read failure or source text
+-> AST parse
+-> structured syntax failure or syntax tree
+-> candidate extraction
 -> rule evaluation
 -> inline ignore filtering
+-> aggregate findings + skipped-file diagnostics
 -> severity/confidence filtering
 -> text, JSON, or SARIF output
 ```
 
-All output formats consume the same filtered `Finding` objects. Output formatting does not affect detection or confidence scoring.
+All output formats consume the same filtered `Finding` objects. Text output also renders `SkippedFile` diagnostics; JSON and SARIF currently serialize findings only. Output formatting does not affect detection or confidence scoring.
 
 ---
 
@@ -31,7 +35,7 @@ All output formats consume the same filtered `Finding` objects. Output formattin
 | `main.py` | Coordinate the application flow |
 | `config/config.py` | Resolve, load, and validate `sentinelscan.json` |
 | `config/config_model.py` | Define scanner config defaults and allowed values |
-| `scanner.py` | Discover files, scan files, attach file paths |
+| `scanner.py` | Discover and decode files, attach paths, and aggregate findings separately from skipped-file diagnostics |
 | `ignore.py` | Apply `.sentinelscanignore` patterns |
 | `inline_ignore.py` | Suppress findings using inline comments |
 | `output.py` | Filter findings and dispatch text, JSON, or SARIF rendering |
@@ -40,7 +44,7 @@ All output formats consume the same filtered `Finding` objects. Output formattin
 | `detectors/rule_engine.py` | Apply rules and conservative name-context checks |
 | `detectors/rules.py` | Define built-in rules |
 | `detectors/confidence.py` | Calculate entropy and confidence |
-| `detectors/models.py` | Define `Rule`, `Candidate`, and `Finding` |
+| `detectors/models.py` | Define `Rule`, `Candidate`, `Finding`, and `SkippedFile` |
 
 ---
 
@@ -67,6 +71,15 @@ severity
 reason
 entropy
 confidence
+```
+
+`SkippedFile` records a recoverable analysis limitation. It contains a file path when the scanner knows it, a stable reason category, and a human-readable detail message. It never represents a vulnerability.
+
+The parser owns syntax-failure reason and message data. The scanner owns source decoding, file-read failures, path enrichment, and aggregation. The output layer owns rendering. This keeps the two result channels separate:
+
+```text
+Finding     = analyzed code matched a security rule
+SkippedFile = a file could not be analyzed safely
 ```
 
 The AST analyzer creates candidates and preserves source identifier spelling. The rule engine creates findings, suppresses only explicit absence context for name-based matches, and leaves structured value-pattern matches unaffected. Output modules serialize findings without changing detection data; text and JSON mask values unless plaintext display was explicitly requested.
@@ -133,7 +146,7 @@ Result file URIs are made relative to the scan root and normalized with `/`. SAR
 - function keyword arguments with string values
 - multiple assignment targets
 
-Unsupported syntax is ignored instead of crashing the scan.
+Unsupported but valid AST shapes are ignored. Invalid Python syntax becomes a structured `SkippedFile` diagnostic so the repository scan can continue.
 
 ---
 

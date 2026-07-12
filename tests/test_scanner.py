@@ -1,8 +1,13 @@
+import scanner
 import pytest
 
 from exceptions import ExpectedUserError
 from scanner import check_path, list_python_files, scan, scan_file
-from tests.helpers import write_ignore_file, write_python_file
+from tests.helpers import (
+    write_ignore_file,
+    write_invalid_ascii_file,
+    write_python_file,
+)
 
 
 def test_check_path_rejects_nonexistent_path(tmp_path):
@@ -35,21 +40,20 @@ def test_list_python_files_returns_non_ignored_python_files_recursively(tmp_path
     assert set(result) == {root_file, nested_file}
 
 
-def test_scan_file_returns_findings_for_single_file(tmp_path):
-    """
-    scan_file should scan one Python file and return findings with file metadata attached.
-    """
+def test_scan_file_returns_findings_and_no_skips_for_valid_file(tmp_path):
+    """A readable valid file should return findings with its path attached."""
     findings_file = write_python_file(
         tmp_path,
         "findings.py",
         'password = "abcdef"\n',
     )
 
-    result = scan_file(findings_file)
+    findings, skipped_files = scan_file(findings_file)
 
-    assert len(result) == 1
+    assert skipped_files == []
+    assert len(findings) == 1
 
-    finding = result[0]
+    finding = findings[0]
 
     assert finding.file_path == str(findings_file)
     assert finding.line_number == 1
@@ -61,20 +65,19 @@ def test_scan_file_returns_findings_for_single_file(tmp_path):
 
 
 def test_scan_file_respects_inline_ignore(tmp_path):
-    """
-    scan_file should suppress findings marked with sentinelscan inline ignore comments.
-    """
+    """Inline suppression should still apply before findings are returned."""
     findings_file = write_python_file(
         tmp_path,
         "findings.py",
         'password = "abcdef"  # sentinelscan: ignore\n' 'token = "abc1234567890j"\n',
     )
 
-    result = scan_file(findings_file)
+    findings, skipped_files = scan_file(findings_file)
 
-    assert len(result) == 1
+    assert skipped_files == []
+    assert len(findings) == 1
 
-    finding = result[0]
+    finding = findings[0]
 
     assert finding.file_path == str(findings_file)
     assert finding.line_number == 2
@@ -85,39 +88,103 @@ def test_scan_file_respects_inline_ignore(tmp_path):
     assert finding.value == "abc1234567890j"
 
 
-def test_scan_returns_flat_list_across_multiple_files(tmp_path):
-    """
-    scan should combine findings from multiple files into one flat list.
+def test_scan_file_returns_structured_skip_for_invalid_python_syntax(tmp_path):
+    """AST syntax failures should become path-enriched skipped-file records."""
+    invalid_file = write_python_file(tmp_path, "invalid.py", 'password = "abc\n')
 
-    This protects against accidentally returning a nested list like:
-    [[finding1], [finding2]]
-    """
+    findings, skipped_files = scan_file(invalid_file)
+
+    assert findings == []
+    assert len(skipped_files) == 1
+
+    skipped_file = skipped_files[0]
+
+    assert skipped_file.path == str(invalid_file)
+    assert skipped_file.reason == "syntax_error"
+    assert skipped_file.message.startswith("syntax error at 1:")
+
+
+def test_scan_file_returns_structured_skip_for_invalid_encoding(tmp_path):
+    """Python decoding failures should become encoding-error skip records."""
+    invalid_file = write_invalid_ascii_file(tmp_path)
+
+    findings, skipped_files = scan_file(invalid_file)
+
+    assert findings == []
+    assert len(skipped_files) == 1
+
+    skipped_file = skipped_files[0]
+
+    assert skipped_file.path == str(invalid_file)
+    assert skipped_file.reason == "encoding_error"
+    assert "ascii" in skipped_file.message
+
+
+def test_scan_file_returns_structured_skip_for_os_error(tmp_path, monkeypatch):
+    """Expected file-system read failures should not escape the scan boundary."""
+    unreadable_file = write_python_file(tmp_path, "unreadable.py", "pass\n")
+
+    def raise_os_error(_file):
+        raise OSError("permission denied")
+
+    monkeypatch.setattr(scanner.tokenize, "open", raise_os_error)
+
+    findings, skipped_files = scan_file(unreadable_file)
+
+    assert findings == []
+    assert len(skipped_files) == 1
+
+    skipped_file = skipped_files[0]
+
+    assert skipped_file.path == str(unreadable_file)
+    assert skipped_file.reason == "io_error"
+    assert skipped_file.message == "permission denied"
+
+
+def test_scan_returns_flat_findings_across_multiple_files(tmp_path):
+    """Scan should aggregate findings into one flat, deterministic list."""
     password_file = write_python_file(
         tmp_path,
         "password_file.py",
         'password = "abcdef"\n',
     )
-
     token_file = write_python_file(
         tmp_path,
         "token_file.py",
         'token = "abc1234567890j"\n',
     )
 
-    result = scan([password_file, token_file])
+    findings, skipped_files = scan([password_file, token_file])
 
-    assert len(result) == 2
-    assert all(not isinstance(item, list) for item in result)
-
-    assert [finding.rule_id for finding in result] == ["PASSWORD", "TOKEN"]
-    assert [finding.file_path for finding in result] == [
+    assert skipped_files == []
+    assert len(findings) == 2
+    assert all(not isinstance(item, list) for item in findings)
+    assert [finding.rule_id for finding in findings] == ["PASSWORD", "TOKEN"]
+    assert [finding.file_path for finding in findings] == [
         str(password_file),
         str(token_file),
     ]
 
 
+def test_scan_continues_after_bad_file_and_aggregates_both_channels(tmp_path):
+    """One syntax-invalid file should not block findings from another file."""
+    invalid_file = write_python_file(tmp_path, "a_invalid.py", 'password = "abc\n')
+    vulnerable_file = write_python_file(
+        tmp_path,
+        "b_vulnerable.py",
+        'password = "abcdef"\n',
+    )
+
+    findings, skipped_files = scan([vulnerable_file, invalid_file])
+
+    assert [finding.file_path for finding in findings] == [str(vulnerable_file)]
+    assert [finding.rule_id for finding in findings] == ["PASSWORD"]
+    assert [skipped_file.path for skipped_file in skipped_files] == [str(invalid_file)]
+    assert [skipped_file.reason for skipped_file in skipped_files] == ["syntax_error"]
+
+
 def test_scan_processes_files_in_sorted_path_order(tmp_path):
-    """Scan results should be deterministic even when file input is unsorted."""
+    """Findings should be deterministic even when file input is unsorted."""
     later_file = write_python_file(
         tmp_path,
         "b_token.py",
@@ -129,17 +196,16 @@ def test_scan_processes_files_in_sorted_path_order(tmp_path):
         'password = "abcdef"\n',
     )
 
-    result = scan([later_file, earlier_file])
+    findings, skipped_files = scan([later_file, earlier_file])
 
-    assert [finding.file_path for finding in result] == [
+    assert skipped_files == []
+    assert [finding.file_path for finding in findings] == [
         str(earlier_file),
         str(later_file),
     ]
-    assert [finding.rule_id for finding in result] == ["PASSWORD", "TOKEN"]
+    assert [finding.rule_id for finding in findings] == ["PASSWORD", "TOKEN"]
 
 
-def test_scan_returns_empty_list_when_no_files():
-    """
-    scan should return an empty list when given no files.
-    """
-    assert scan([]) == []
+def test_scan_returns_two_empty_lists_when_no_files():
+    """An empty scan should return empty finding and skipped-file channels."""
+    assert scan([]) == ([], [])

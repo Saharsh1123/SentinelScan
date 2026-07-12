@@ -1,4 +1,5 @@
-from detectors.ast_analyzer import extract_candidates
+from detectors.ast_analyzer import extract_candidates, parse_ast
+from detectors.find_secrets import detect_ast_secrets
 from tests.test_ast.ast_helpers import (
     API_KEY_REASON,
     AWS_REASON,
@@ -8,14 +9,14 @@ from tests.test_ast.ast_helpers import (
     TOKEN_REASON,
     assert_finding,
     assert_single_finding,
-    detect_ast_secrets,
+    detect_findings,
     get_entropy,
 )
 
 
 def test_ast_basic_password():
     code = 'password = "abcdef"'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert_single_finding(
         result,
@@ -32,7 +33,7 @@ def test_ast_basic_password():
 
 def test_ast_secret():
     code = 'client_secret = "abcdef"'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert_single_finding(
         result,
@@ -49,7 +50,7 @@ def test_ast_secret():
 
 def test_ast_aws_access_key_value():
     code = 'random_var = "AKIAEXAMPLE123456789"'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert_single_finding(
         result,
@@ -66,7 +67,7 @@ def test_ast_aws_access_key_value():
 
 def test_ast_aws_access_key_with_api_key_variable():
     code = 'api_key = "AKIAEXAMPLE123456789"'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert len(result) == 2
 
@@ -97,7 +98,7 @@ def test_ast_aws_access_key_with_api_key_variable():
 
 def test_ast_multiple_classifications_preserve_rule_order():
     code = 'api_key = "AKIAEXAMPLE123456789"'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert [finding.rule_id for finding in result] == [
         "AWS_ACCESS_KEY",
@@ -107,21 +108,21 @@ def test_ast_multiple_classifications_preserve_rule_order():
 
 def test_ast_non_string_assignment_is_ignored():
     code = "password = 123456"
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert result == []
 
 
 def test_ast_irrelevant_variable_is_ignored():
     code = 'username = "abcdef"'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert result == []
 
 
 def test_ast_short_value_is_ignored():
     code = 'password = "abc"'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert result == []
 
@@ -132,7 +133,7 @@ def test_ast_multiple_assignments():
     api_key = "12345678"
     token = "qwerty123"
     """
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert len(result) == 3
 
@@ -171,16 +172,20 @@ def test_ast_multiple_assignments():
     )
 
 
-def test_ast_syntax_error_returns_empty_list():
+def test_detector_propagates_structured_syntax_skip():
     code = 'password = "abc'
-    result = detect_ast_secrets(code)
 
-    assert result == []
+    findings, skipped_file = detect_ast_secrets(code)
+
+    assert findings == []
+    assert skipped_file is not None
+    assert skipped_file.path is None
+    assert skipped_file.reason == "syntax_error"
 
 
 def test_ast_preserves_uppercase_variable_name():
     code = 'PASSWORD = "abcdef"'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert_single_finding(
         result,
@@ -196,7 +201,10 @@ def test_ast_preserves_uppercase_variable_name():
 
 
 def test_ast_preserves_camel_case_candidate_name():
-    candidates = list(extract_candidates('notPassword = "abcdef"'))
+    tree, skipped_file = parse_ast('notPassword = "abcdef"')
+
+    assert skipped_file is None
+    candidates = list(extract_candidates(tree))
 
     assert len(candidates) == 1
     assert candidates[0].var_name == "notPassword"
@@ -204,7 +212,7 @@ def test_ast_preserves_camel_case_candidate_name():
 
 def test_ast_multiple_targets():
     code = 'a = password = "abcdef"'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert_single_finding(
         result,
@@ -221,7 +229,7 @@ def test_ast_multiple_targets():
 
 def test_ast_multiple_sensitive_targets():
     code = 'password = token = "abcdef"'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert len(result) == 2
 
@@ -252,7 +260,7 @@ def test_ast_multiple_sensitive_targets():
 
 def test_ast_complex_password_value():
     code = 'password = "abc_def-123#$%^&*()"'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert_single_finding(
         result,
@@ -272,7 +280,7 @@ def test_ast_dedented_multiline_code():
         password = "abcdef"
         username = "notsecret"
     """
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert_single_finding(
         result,
@@ -292,7 +300,7 @@ def test_ast_preserves_line_number():
     username = "safe"
     token = "abcdef"
     """
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert_single_finding(
         result,
@@ -309,7 +317,7 @@ def test_ast_preserves_line_number():
 
 def test_ast_high_confidence_token():
     code = 'token = "abc1234567890j"'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert_single_finding(
         result,
@@ -326,7 +334,7 @@ def test_ast_high_confidence_token():
 
 def test_ast_repetitive_token_medium_confidence():
     code = 'token = "xyzttttggfdddf"'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert_single_finding(
         result,
@@ -343,7 +351,7 @@ def test_ast_repetitive_token_medium_confidence():
 
 def test_ast_repetitive_api_key_low_confidence():
     code = 'api_key = "12dwdqwdqwdqw3"'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert_single_finding(
         result,
@@ -364,7 +372,7 @@ def test_ast_findings_use_supported_confidence_labels():
     token = "abc1234567890j"
     api_key = "AKIAEXAMPLE123456789"
     """
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert result
     assert all(finding.confidence in SUPPORTED_CONFIDENCE for finding in result)
@@ -376,7 +384,7 @@ def test_ast_findings_include_entropy_metadata():
     token = "abc1234567890j"
     api_key = "AKIAEXAMPLE123456789"
     """
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert result
     assert all(get_entropy(finding) >= 0 for finding in result)
@@ -384,6 +392,6 @@ def test_ast_findings_include_entropy_metadata():
 
 def test_ast_findings_do_not_include_file_path_before_scanner_enrichment():
     code = 'password = "abcdef"'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert result[0].file_path is None

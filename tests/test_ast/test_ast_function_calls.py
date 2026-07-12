@@ -6,7 +6,7 @@ from tests.test_ast.ast_helpers import (
     TOKEN_REASON,
     assert_finding,
     assert_single_finding,
-    detect_ast_secrets,
+    detect_findings,
 )
 
 
@@ -15,7 +15,7 @@ def test_ast_function_call_password_keyword():
     Function calls with password keyword arguments should produce password findings.
     """
     code = 'connect(password="abcdef")'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert_single_finding(
         result,
@@ -35,7 +35,7 @@ def test_ast_function_call_api_key_keyword():
     Function calls with api_key keyword arguments should produce API key findings.
     """
     code = 'client(api_key="abc1234567890j")'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert_single_finding(
         result,
@@ -55,7 +55,7 @@ def test_ast_function_call_token_keyword():
     Function calls with token keyword arguments should produce token findings.
     """
     code = 'authenticate(token="abc1234567890j")'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert_single_finding(
         result,
@@ -75,7 +75,7 @@ def test_ast_function_call_secret_keyword():
     Function calls with secret keyword arguments should produce secret findings.
     """
     code = 'create_client(client_secret="abcdef")'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert_single_finding(
         result,
@@ -95,7 +95,7 @@ def test_ast_function_call_irrelevant_keyword_is_ignored():
     Safe keyword argument names should not produce findings.
     """
     code = 'connect(username="abcdef")'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert result == []
 
@@ -105,7 +105,7 @@ def test_ast_function_call_short_value_is_ignored():
     Function call keyword findings should still respect minimum length rules.
     """
     code = 'connect(password="abc")'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert result == []
 
@@ -115,7 +115,7 @@ def test_ast_function_call_non_string_value_is_ignored():
     Function call keyword arguments with non-string values should be ignored.
     """
     code = "connect(password=123456)"
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert result == []
 
@@ -126,7 +126,7 @@ def test_ast_function_call_positional_string_is_ignored():
     a clear secret-related variable name.
     """
     code = 'connect("abcdef")'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert result == []
 
@@ -140,7 +140,7 @@ def test_ast_function_call_kwargs_expansion_is_ignored():
     config = {"password": "abcdef"}
     connect(**config)
     """
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     # The dictionary literal is still detected, but connect(**config) should
     # not create an additional duplicate finding.
@@ -168,7 +168,7 @@ def test_ast_function_call_multiple_secret_keywords():
         token="abc1234567890j",
     )
     """
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert len(result) == 3
 
@@ -219,7 +219,7 @@ def test_ast_function_call_preserves_multiline_keyword_line_number():
         password="abcdef",
     )
     """
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert_single_finding(
         result,
@@ -239,7 +239,7 @@ def test_ast_function_call_nested_inside_assignment_is_detected_once():
     Function calls used inside assignments should still be detected once.
     """
     code = 'client = connect(password="abcdef")'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert_single_finding(
         result,
@@ -259,7 +259,7 @@ def test_ast_function_call_aws_value_with_irrelevant_keyword():
     AWS access key values should be detected even when the keyword name is not sensitive.
     """
     code = 'connect(region="AKIAEXAMPLE123456789")'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert_single_finding(
         result,
@@ -279,7 +279,7 @@ def test_ast_function_call_api_key_with_aws_value():
     A sensitive keyword with an AWS-looking value should match both relevant rules.
     """
     code = 'connect(api_key="AKIAEXAMPLE123456789")'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert len(result) == 2
 

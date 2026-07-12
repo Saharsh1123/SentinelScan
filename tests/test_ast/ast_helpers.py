@@ -1,4 +1,13 @@
-from detectors.find_secrets import detect_ast_secrets  # noqa: F401
+from detectors.find_secrets import detect_ast_secrets
+
+
+def detect_findings(code):
+    """Return successful detector findings and fail if parsing was skipped."""
+    findings, skipped_file = detect_ast_secrets(code)
+
+    assert skipped_file is None
+    return findings
+
 
 PASSWORD_REASON = (
     "variable name matched password/pwd/passwd pattern and value met minimum length"

@@ -59,7 +59,7 @@ Supported fields:
 | `confidence_levels` | list | `LOW`, `MEDIUM`, `HIGH` |
 | `output_format` | string | `text`, `json`, `sarif` |
 
-Missing fields use defaults. Unknown fields are ignored. Invalid supported fields fail loudly. Neither `redact` nor `show_secrets` is a supported config field; plaintext disclosure must be requested on the command line for each run.
+Missing fields use defaults. Unknown fields and invalid supported fields fail loudly. Neither `redact` nor `show_secrets` is a supported config field; plaintext disclosure must be requested on the command line for each run.
 
 Precedence:
 
@@ -112,6 +112,30 @@ Severity mapping:
 | `HIGH` | `error` |
 
 SARIF messages never include detected secret values. `--unsafe-show-secrets` affects only text and JSON output and does not change SARIF content.
+
+### Skipped files
+
+SentinelScan uses Python-aware source decoding and continues when an individual `.py` file cannot be read, decoded, or parsed. These cases are scan diagnostics, not security findings.
+
+Text output includes a separate section with a stable reason category and the underlying detail:
+
+```text
+--- Skipped ---
+
+File: src/invalid.py
+Reason: syntax_error
+Details: syntax error at 4: invalid syntax
+```
+
+Current reason categories are:
+
+| Reason | Meaning |
+|---|---|
+| `encoding_error` | Python source encoding could not be resolved or decoded |
+| `io_error` | The file could not be opened or read |
+| `syntax_error` | Source decoding succeeded, but Python AST parsing failed |
+
+A skipped-only scan returns exit code `0`. Findings that remain after filtering return exit code `1`. JSON and SARIF remain pure machine-readable finding reports and currently omit skipped-file diagnostics.
 
 ---
 

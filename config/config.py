@@ -124,7 +124,7 @@ def get_config(scan_path=None):
 
     Missing config files fall back to `ScannerConfig` defaults. Partial config
     files are allowed; missing fields keep their default values. Unknown keys
-    are ignored for forward compatibility.
+    are rejected so misspelled settings do not silently change scan behavior.
 
     Args:
         scan_path (str | Path | None): Optional scan root to check first for

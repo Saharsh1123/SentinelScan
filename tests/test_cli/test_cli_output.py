@@ -1,3 +1,4 @@
+from exit_codes import ExitCode
 from tests.helpers import (
     PASSWORD_REASON,
     assert_pure_json_output,
@@ -5,6 +6,7 @@ from tests.helpers import (
     assert_success,
     parse_json_output,
     run_cli,
+    write_invalid_ascii_file,
     write_python_file,
 )
 
@@ -110,3 +112,36 @@ def test_cli_empty_directory_text_output_has_no_findings(tmp_path):
     assert "--- Findings ---" not in result.stdout
     assert "Reason:" not in result.stdout
     assert "Confidence:" not in result.stdout
+
+
+def test_cli_text_output_reports_skipped_file_and_findings(tmp_path):
+    write_invalid_ascii_file(tmp_path)
+    vulnerable_file = write_python_file(
+        tmp_path,
+        "vulnerable.py",
+        'password = "abcdef"\n',
+    )
+
+    result = run_cli(tmp_path)
+
+    assert result.returncode == ExitCode.FINDINGS
+    assert result.stderr == ""
+    assert "--- Skipped ---" in result.stdout
+    assert f"File: {tmp_path / 'bad_ascii.py'}" in result.stdout
+    assert "Reason: encoding_error" in result.stdout
+    assert "--- Findings ---" in result.stdout
+    assert f"[HIGH] {vulnerable_file}:1 Password" in result.stdout
+
+
+def test_cli_skipped_only_scan_reports_diagnostic_and_returns_success(tmp_path):
+    invalid_file = write_invalid_ascii_file(tmp_path)
+
+    result = run_cli(tmp_path)
+
+    assert result.returncode == ExitCode.SUCCESS
+    assert result.stderr == ""
+    assert "--- Skipped ---" in result.stdout
+    assert f"File: {invalid_file}" in result.stdout
+    assert "Reason: encoding_error" in result.stdout
+    assert "No vulnerabilities found." in result.stdout
+    assert "--- Findings ---" not in result.stdout

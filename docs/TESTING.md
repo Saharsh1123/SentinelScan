@@ -32,12 +32,12 @@ python3 -m pytest tests/test_output/test_sarif_output.py tests/test_cli/test_cli
 
 | Area | Purpose |
 |---|---|
-| AST tests | Candidate extraction and line numbers |
+| AST tests | Parsing, structured syntax failures, candidate extraction, and line numbers |
 | Rule tests | Candidate-to-finding behavior |
 | Confidence tests | Entropy and confidence scoring |
-| Scanner tests | File scanning and inline-ignore integration |
+| Scanner tests | Python-aware reads, skipped-file aggregation, path enrichment, and inline-ignore integration |
 | Config tests | Defaults, validation, lookup precedence, and supported formats |
-| Output tests | Filtering, safe secret rendering, masking boundaries, and SARIF construction |
+| Output tests | Filtering, skipped-file text rendering, safe secret rendering, masking boundaries, and SARIF construction |
 | CLI tests | Real command behavior through subprocesses |
 
 Tests should cover one meaningful behavior at a time and avoid repeating behavior already proven at a lower layer.
@@ -49,12 +49,14 @@ Tests should cover one meaningful behavior at a time and avoid repeating behavio
 ```text
 tests/
 ├── test_ast/
+│   └── test_ast_parsing.py
 ├── test_cli/
 │   └── test_cli_sarif.py
 ├── test_config/
 ├── test_output/
 │   ├── test_sarif_output.py
-│   └── test_secret_display.py
+│   ├── test_secret_display.py
+│   └── test_text_output.py
 ├── helpers.py
 ├── test_apply_rules.py
 ├── test_confidence.py
@@ -76,6 +78,22 @@ The secret-display tests verify:
 - short, medium, and long masking branches remain deterministic
 - JSON remains machine-readable when the unsafe flag is used
 - SARIF remains secret-free regardless of the unsafe flag
+
+---
+
+## Skipped-File Coverage
+
+The skipped-file tests verify:
+
+- valid source returns findings with an empty skipped-file channel
+- invalid syntax becomes a structured parser diagnostic and receives its path at the scanner boundary
+- invalid source encodings are exercised with raw bytes rather than escaped text
+- expected `OSError` failures are simulated with monkeypatching for cross-platform stability
+- one bad file does not prevent findings from other files
+- text output shows skipped-only scans instead of hiding diagnostics
+- CLI skipped-only scans return `0`, mixed scans with findings return `1`, and stderr remains empty
+
+The suite tests read-error variants at the scanner layer and keeps CLI coverage intentionally shallow to avoid duplicating every lower-level branch. JSON and SARIF tests continue to verify pure finding-only documents.
 
 ---
 
@@ -107,7 +125,10 @@ The suite intentionally does not repeat every detector-rule case in SARIF tests.
 
 ## Important Coverage
 
-- supported AST syntax shapes
+- supported AST syntax shapes and structured syntax failures
+- invalid encoding and expected file-read failures become skipped-file diagnostics
+- scans continue across mixed readable and skipped files
+- skipped-only text output remains visible without changing the success exit code
 - rule matching and multiple classifications
 - config defaults, lookup, validation, and output formats
 - exact severity/confidence list filters

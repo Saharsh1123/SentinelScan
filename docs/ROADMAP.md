@@ -15,6 +15,7 @@ SentinelScan is currently a Python-only static-analysis learning project focused
 - repository-relative SARIF locations
 - safe-by-default masking for text and JSON with an explicit unsafe plaintext opt-in
 - file-level and inline ignores
+- structured skipped-file diagnostics for read, encoding, and syntax failures
 - broad pytest coverage
 - Ubuntu and Windows CI across Python 3.11 and 3.12
 
@@ -25,6 +26,7 @@ SentinelScan is currently a Python-only static-analysis learning project focused
 - package with `pyproject.toml`
 - console command entry point
 - JSONL output
+- machine-readable skipped-file diagnostics for JSON and SARIF
 - configurable rule enable/disable support
 - SARIF validation against the official schema in CI
 - SARIF rule help text and remediation guidance

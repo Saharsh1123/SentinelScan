@@ -93,6 +93,14 @@ def write_python_file(root_path, relative_path, content):
     return file_path
 
 
+def write_invalid_ascii_file(root_path, relative_path="bad_ascii.py"):
+    """Write Python source whose ASCII encoding declaration rejects a raw byte."""
+    file_path = root_path / relative_path
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    file_path.write_bytes(b"# -*- coding: ascii -*-\n" b'password = "\xe9"\n')
+    return file_path
+
+
 def write_ignore_file(root_path, content):
     """
     Write a .sentinelscanignore file under a temporary test directory.

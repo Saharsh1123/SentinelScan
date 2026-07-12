@@ -4,6 +4,15 @@ import pytest
 
 from scanner import finding_has_inline_ignore, scan
 
+
+def scan_findings(files):
+    """Return findings for scanner tests that do not exercise skipped files."""
+    findings, skipped_files = scan(files)
+
+    assert skipped_files == []
+    return findings
+
+
 PASSWORD_REASON = (
     "variable name matched password/pwd/passwd pattern and value met minimum length"
 )
@@ -132,7 +141,7 @@ def test_scan_suppresses_single_inline_ignored_finding(tmp_path):
         'password = "abcdef"  # sentinelscan: ignore\n',
     )
 
-    result = scan([ignored_file])
+    result = scan_findings([ignored_file])
 
     assert result == []
 
@@ -144,7 +153,7 @@ def test_scan_keeps_finding_without_inline_ignore(tmp_path):
         'password = "abcdef"\n',
     )
 
-    result = scan([vulnerable_file])
+    result = scan_findings([vulnerable_file])
 
     assert len(result) == 1
 
@@ -168,7 +177,7 @@ def test_scan_unrelated_comment_does_not_suppress_finding(tmp_path):
         'password = "abcdef"  # this is a normal comment\n',
     )
 
-    result = scan([vulnerable_file])
+    result = scan_findings([vulnerable_file])
 
     assert len(result) == 1
     assert result[0].rule_id == "PASSWORD"
@@ -182,7 +191,7 @@ def test_scan_inline_ignore_only_suppresses_same_line(tmp_path):
         'password = "abcdef"  # sentinelscan: ignore\n' 'token = "abc1234567890j"\n',
     )
 
-    result = scan([findings_file])
+    result = scan_findings([findings_file])
 
     assert len(result) == 1
 
@@ -201,7 +210,7 @@ def test_scan_inline_ignore_on_previous_line_does_not_suppress_next_line(tmp_pat
         "# sentinelscan: ignore\n" 'password = "abcdef"\n',
     )
 
-    result = scan([findings_file])
+    result = scan_findings([findings_file])
 
     assert len(result) == 1
     assert result[0].line_number == 2
@@ -215,7 +224,7 @@ def test_scan_inline_ignore_suppresses_multiple_findings_on_same_line(tmp_path):
         'api_key = "AKIAEXAMPLE123456789"  # sentinelscan: ignore\n',
     )
 
-    result = scan([findings_file])
+    result = scan_findings([findings_file])
 
     assert result == []
 
@@ -229,7 +238,7 @@ def test_scan_inline_ignore_suppresses_multiple_sensitive_targets_on_same_line(
         'password = token = "abcdef"  # sentinelscan: ignore\n',
     )
 
-    result = scan([findings_file])
+    result = scan_findings([findings_file])
 
     assert result == []
 
@@ -241,7 +250,7 @@ def test_scan_inline_ignore_in_string_literal_does_not_suppress_finding(tmp_path
         'password = "sentinelscan: ignore"\n',
     )
 
-    result = scan([findings_file])
+    result = scan_findings([findings_file])
 
     assert len(result) == 1
     assert result[0].rule_id == "PASSWORD"
@@ -260,7 +269,7 @@ def test_scan_rule_specific_ignore_suppresses_only_matching_rule(tmp_path):
         'api_key = "AKIAEXAMPLE123456789"  # sentinelscan: ignore AWS_ACCESS_KEY\n',
     )
 
-    result = scan([findings_file])
+    result = scan_findings([findings_file])
 
     assert len(result) == 1
     assert result[0].rule_id == "API_KEY"
@@ -275,7 +284,7 @@ def test_scan_rule_specific_ignore_can_suppress_api_key_but_keep_aws_match(tmp_p
         'api_key = "AKIAEXAMPLE123456789"  # sentinelscan: ignore API_KEY\n',
     )
 
-    result = scan([findings_file])
+    result = scan_findings([findings_file])
 
     assert len(result) == 1
     assert result[0].rule_id == "AWS_ACCESS_KEY"
@@ -291,7 +300,7 @@ def test_scan_rule_specific_ignore_suppresses_multiple_listed_rules(tmp_path):
         "# sentinelscan: ignore AWS_ACCESS_KEY API_KEY\n",
     )
 
-    result = scan([findings_file])
+    result = scan_findings([findings_file])
 
     assert result == []
 
@@ -303,7 +312,7 @@ def test_scan_unknown_rule_specific_ignore_does_not_suppress_finding(tmp_path):
         'password = "abcdef"  # sentinelscan: ignore FAKE_RULE\n',
     )
 
-    result = scan([findings_file])
+    result = scan_findings([findings_file])
 
     assert len(result) == 1
     assert result[0].rule_id == "PASSWORD"
@@ -318,7 +327,7 @@ def test_scan_rule_specific_ignore_only_affects_same_line(tmp_path):
         'token = "abc1234567890j"\n',
     )
 
-    result = scan([findings_file])
+    result = scan_findings([findings_file])
 
     assert len(result) == 1
     assert result[0].line_number == 2
@@ -333,7 +342,7 @@ def test_scan_rule_specific_ignore_preserves_remaining_finding_metadata(tmp_path
         'api_key = "AKIAEXAMPLE123456789"  # sentinelscan: ignore AWS_ACCESS_KEY\n',
     )
 
-    result = scan([findings_file])
+    result = scan_findings([findings_file])
 
     assert len(result) == 1
 

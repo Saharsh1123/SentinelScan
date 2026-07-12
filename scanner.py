@@ -2,17 +2,19 @@
 File discovery and scan orchestration for SentinelScan.
 
 This module validates scan paths, finds Python files, applies file-level ignore
-rules, scans each file, suppresses inline-ignored findings, and attaches file
-paths to findings returned by the detector layer.
+rules, scans each file, suppresses inline-ignored findings, and aggregates
+security findings separately from structured skipped-file diagnostics.
 """
 
+import tokenize
 from dataclasses import replace
 from pathlib import Path
 
 from detectors.find_secrets import detect_ast_secrets
+from detectors.models import SkippedFile
+from exceptions import ExpectedUserError
 from ignore import filter_ignored_files, load_ignore_patterns
 from inline_ignore import finding_has_inline_ignore
-from exceptions import ExpectedUserError
 
 
 def check_path(input_path):
@@ -57,53 +59,88 @@ def list_python_files(path):
 
 def scan_file(file):
     """
-    Scan one Python file and return findings from that file.
+    Scan one Python file for findings or a recoverable skip condition.
 
-    Detection runs on the full source text so AST parsing can preserve source
-    structure. Inline ignores are checked against the original source line after
-    findings are produced.
+    Python-aware decoding happens before AST analysis. Expected decoding,
+    encoding-declaration, and file-system read failures become `SkippedFile`
+    records so repository scanning can continue. Inline ignores are checked
+    against the original source line after findings are produced.
 
     Args:
         file (Path): Python file to scan.
 
     Returns:
-        list[Finding]: Findings detected in the file, with file path attached.
+        tuple[list[Finding], list[SkippedFile]]: Findings and skipped-file
+            diagnostics, with the file path attached to each result.
     """
     findings = []
+    skipped_files = []
 
-    with open(file, "r", encoding="utf-8", errors="ignore") as f:
-        content = f.read()
+    try:
+        with tokenize.open(file) as source:
+            content = source.read()
+    except UnicodeDecodeError as error:
+        skipped_files.append(
+            SkippedFile(
+                path=str(file),
+                reason="encoding_error",
+                message=str(error),
+            )
+        )
+        return findings, skipped_files
+    except SyntaxError as error:
+        # tokenize.open raises SyntaxError for invalid encoding declarations.
+        skipped_files.append(
+            SkippedFile(
+                path=str(file),
+                reason="encoding_error",
+                message=str(error),
+            )
+        )
+        return findings, skipped_files
+    except OSError as error:
+        skipped_files.append(
+            SkippedFile(
+                path=str(file),
+                reason="io_error",
+                message=str(error),
+            )
+        )
+        return findings, skipped_files
 
     lines = content.splitlines()
-    ast_results = detect_ast_secrets(content)
+    detected_findings, skipped_file = detect_ast_secrets(content)
 
-    for finding in ast_results:
+    for finding in detected_findings:
         line = lines[finding.line_number - 1]
         if finding_has_inline_ignore(line, finding):
             continue
 
-        finding_with_file = replace(finding, file_path=str(file))
-        findings.append(finding_with_file)
+        findings.append(replace(finding, file_path=str(file)))
 
-    return findings
+    if skipped_file is not None:
+        skipped_files.append(replace(skipped_file, path=str(file)))
+
+    return findings, skipped_files
 
 
 def scan(files):
     """
-    Scan Python files for hardcoded secrets.
+    Scan Python files while keeping findings and skipped files separate.
 
     Args:
         files (list[Path]): Python files to scan.
 
     Returns:
-        list[Finding]: Flat list of findings detected across all files.
+        tuple[list[Finding], list[SkippedFile]]: Flat aggregated lists in
+            deterministic file-path order.
     """
-    if not files:
-        return []
-
     findings = []
+    skipped_files = []
 
     for file in sorted(files):
-        findings.extend(scan_file(file))
+        file_findings, file_skips = scan_file(file)
+        findings.extend(file_findings)
+        skipped_files.extend(file_skips)
 
-    return findings
+    return findings, skipped_files

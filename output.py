@@ -4,9 +4,11 @@ Output filtering and rendering for SentinelScan.
 Detection always uses original secret values. Text and JSON mask values by
 default and reveal plaintext only after an explicit unsafe CLI opt-in. SARIF
 rendering is delegated to ``sarif.py`` and never includes detected values.
+Skipped-file diagnostics are currently rendered only in text mode.
 """
 
 import json
+
 from sarif import output_sarif
 
 
@@ -95,12 +97,14 @@ def output_json(filtered_findings, show_secrets):
     print(json.dumps(json_results, indent=2))
 
 
-def output(filtered_findings, output_format, show_secrets, files, path):
+def output(filtered_findings, skipped_files, output_format, show_secrets, files, path):
     """Print scan results as text, JSON, or SARIF.
 
     Args:
         filtered_findings (list[Finding]): Findings after suppression and
             severity/confidence filtering.
+        skipped_files (list[SkippedFile]): Files that could not be analyzed.
+            These diagnostics are currently included only in text output.
         output_format (str): Selected format: ``text``, ``json``, or ``sarif``.
         show_secrets (bool): Whether text or JSON may display plaintext values.
             SARIF never includes detected values.
@@ -113,11 +117,19 @@ def output(filtered_findings, output_format, show_secrets, files, path):
     if output_format == "json":
         output_json(filtered_findings, show_secrets)
         return
-    elif output_format == "sarif":
+
+    if output_format == "sarif":
         output_sarif(filtered_findings, path)
         return
 
     print(f"Scanning {len(files)} Python files...")
+
+    if skipped_files:
+        print("\n--- Skipped ---\n")
+        for skipped_file in skipped_files:
+            print(f"File: {skipped_file.path}")
+            print(f"Reason: {skipped_file.reason}")
+            print(f"Details: {skipped_file.message}\n")
 
     if not filtered_findings:
         print("\nNo vulnerabilities found.")

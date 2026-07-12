@@ -4,7 +4,7 @@ from tests.test_ast.ast_helpers import (
     SECRET_REASON,
     TOKEN_REASON,
     assert_single_finding,
-    detect_ast_secrets,
+    detect_findings,
 )
 
 
@@ -16,7 +16,7 @@ def test_ast_annotated_password_assignment():
         password: str = "abcdef"
     """
     code = 'password: str = "abcdef"'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert_single_finding(
         result,
@@ -36,7 +36,7 @@ def test_ast_annotated_api_key_assignment():
     Annotated api_key assignments should produce API key findings.
     """
     code = 'api_key: str = "abc1234567890j"'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert_single_finding(
         result,
@@ -56,7 +56,7 @@ def test_ast_annotated_token_assignment():
     Annotated token assignments should produce token findings.
     """
     code = 'token: str = "abc1234567890j"'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert_single_finding(
         result,
@@ -76,7 +76,7 @@ def test_ast_annotated_secret_assignment():
     Annotated secret assignments should produce secret findings.
     """
     code = 'client_secret: str = "abcdef"'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert_single_finding(
         result,
@@ -96,7 +96,7 @@ def test_ast_annotated_irrelevant_variable_is_ignored():
     Annotated assignments should not create findings for safe variable names.
     """
     code = 'username: str = "abcdef"'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert result == []
 
@@ -106,7 +106,7 @@ def test_ast_annotated_short_value_is_ignored():
     Annotated assignments should still respect minimum length rules.
     """
     code = 'password: str = "abc"'
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert result == []
 
@@ -119,7 +119,7 @@ def test_ast_annotated_assignment_without_value_is_ignored():
         password: str
     """
     code = "password: str"
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert result == []
 
@@ -129,7 +129,7 @@ def test_ast_annotated_non_string_value_is_ignored():
     Annotated assignments with non-string values should be ignored.
     """
     code = "password: str = 123456"
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert result == []
 
@@ -142,7 +142,7 @@ def test_ast_annotated_assignment_preserves_line_number():
     username: str = "safe"
     password: str = "abcdef"
     """
-    result = detect_ast_secrets(code)
+    result = detect_findings(code)
 
     assert_single_finding(
         result,
