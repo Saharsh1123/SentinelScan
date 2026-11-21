@@ -7,7 +7,7 @@ This module defines user-facing CLI flags and returns parsed arguments to
 
 import argparse
 
-from config.config_model import VALID_LEVELS, VALID_OUTPUT_FORMATS
+from sentinelscan.config.config_model import VALID_LEVELS, VALID_OUTPUT_FORMATS
 
 parser = argparse.ArgumentParser(
     description="Scan a directory for hardcoded secrets in Python files"

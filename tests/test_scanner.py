@@ -1,8 +1,8 @@
-import scanner
+from sentinelscan import scanner
 import pytest
 
-from exceptions import ExpectedUserError
-from scanner import check_path, list_python_files, scan, scan_file
+from sentinelscan.exceptions import ExpectedUserError
+from sentinelscan.scanner import check_path, list_python_files, scan, scan_file
 from tests.helpers import (
     write_ignore_file,
     write_invalid_ascii_file,

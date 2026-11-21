@@ -2,8 +2,8 @@ import re
 
 import pytest
 
-from detectors.models import Candidate, Rule
-from detectors.rule_engine import apply_rules
+from sentinelscan.detectors.models import Candidate, Rule
+from sentinelscan.detectors.rule_engine import apply_rules
 
 PASSWORD_REASON = (
     "variable name matched password/pwd/passwd pattern and value met minimum length"
@@ -149,7 +149,7 @@ def test_rule_emits_once_when_value_and_var_patterns_match(monkeypatch):
     )
 
     monkeypatch.setattr(
-        "detectors.rule_engine.RULES",
+        "sentinelscan.detectors.rule_engine.RULES",
         [combined_rule],
     )
 

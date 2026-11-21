@@ -6,8 +6,8 @@ It does not read files, print output, or apply suppression rules; those
 responsibilities belong to scanner and output modules.
 """
 
-from detectors.ast_analyzer import extract_candidates, parse_ast
-from detectors.rule_engine import apply_rules
+from sentinelscan.detectors.ast_analyzer import extract_candidates, parse_ast
+from sentinelscan.detectors.rule_engine import apply_rules
 
 
 def detect_ast_secrets(code):

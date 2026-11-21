@@ -6,3 +6,6 @@ __pycache__/
 .DS_Store
 *.zip
 *.patch
+build/
+dist/
+*.egg-info/

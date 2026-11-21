@@ -1,4 +1,8 @@
-from config.config_model import ScannerConfig, VALID_LEVELS, VALID_OUTPUT_FORMATS
+from sentinelscan.config.config_model import (
+    ScannerConfig,
+    VALID_LEVELS,
+    VALID_OUTPUT_FORMATS,
+)
 
 
 def test_scanner_config_defaults_are_safe_and_include_all_levels():

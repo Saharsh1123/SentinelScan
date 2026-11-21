@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sentinelscan"
+version = "0.1.0"
+description = "Experimental scanner for hardcoded secrets in Python files"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+
+[project.urls]
+Repository = "https://github.com/Saharsh1123/SentinelScan"
+
+[project.scripts]
+sentinelscan = "sentinelscan.main:main"
+
+[tool.setuptools]
+packages = ["sentinelscan", "sentinelscan.config", "sentinelscan.detectors"]

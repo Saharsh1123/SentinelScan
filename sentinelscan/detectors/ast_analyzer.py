@@ -9,7 +9,7 @@ candidate is a vulnerability; that is the rule engine's job.
 import ast
 import textwrap
 
-from detectors.models import Candidate, SkippedFile
+from sentinelscan.detectors.models import Candidate, SkippedFile
 
 
 def parse_ast(source_code):

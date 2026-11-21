@@ -1,7 +1,7 @@
 """Unit tests for text rendering of findings and skipped-file diagnostics."""
 
-from detectors.models import Finding, SkippedFile
-from output import output
+from sentinelscan.detectors.models import Finding, SkippedFile
+from sentinelscan.output import output
 
 
 def make_finding(file_path):

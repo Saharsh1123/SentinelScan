@@ -2,7 +2,7 @@ import sys
 
 import pytest
 
-from cli import return_args
+from sentinelscan.cli import return_args
 
 
 def test_cli_optional_overrides_default_to_none(monkeypatch):

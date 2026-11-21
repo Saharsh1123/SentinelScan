@@ -4,7 +4,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from exit_codes import ExitCode
+from sentinelscan.exit_codes import ExitCode
 
 PASSWORD_REASON = (
     "variable name matched password/pwd/passwd pattern and value met minimum length"

@@ -1,6 +1,6 @@
 import pytest
 
-from exit_codes import ExitCode
+from sentinelscan.exit_codes import ExitCode
 from tests.helpers import run_cli
 
 

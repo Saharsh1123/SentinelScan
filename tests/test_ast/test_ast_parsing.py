@@ -2,7 +2,7 @@
 
 import ast
 
-from detectors.ast_analyzer import parse_ast
+from sentinelscan.detectors.ast_analyzer import parse_ast
 
 
 def test_parse_ast_returns_tree_for_valid_source():

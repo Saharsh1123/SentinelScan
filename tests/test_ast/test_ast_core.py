@@ -1,5 +1,5 @@
-from detectors.ast_analyzer import extract_candidates, parse_ast
-from detectors.find_secrets import detect_ast_secrets
+from sentinelscan.detectors.ast_analyzer import extract_candidates, parse_ast
+from sentinelscan.detectors.find_secrets import detect_ast_secrets
 from tests.test_ast.ast_helpers import (
     API_KEY_REASON,
     AWS_REASON,

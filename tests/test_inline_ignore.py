@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from scanner import finding_has_inline_ignore, scan
+from sentinelscan.scanner import finding_has_inline_ignore, scan
 
 
 def scan_findings(files):
