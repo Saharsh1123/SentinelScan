@@ -1,4 +1,4 @@
-from detectors.find_secrets import detect_ast_secrets
+from sentinelscan.detectors.find_secrets import detect_ast_secrets
 
 
 def detect_findings(code):

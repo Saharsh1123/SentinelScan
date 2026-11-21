@@ -10,11 +10,11 @@ import tokenize
 from dataclasses import replace
 from pathlib import Path
 
-from detectors.find_secrets import detect_ast_secrets
-from detectors.models import SkippedFile
-from exceptions import ExpectedUserError
-from ignore import filter_ignored_files, load_ignore_patterns
-from inline_ignore import finding_has_inline_ignore
+from sentinelscan.detectors.find_secrets import detect_ast_secrets
+from sentinelscan.detectors.models import SkippedFile
+from sentinelscan.exceptions import ExpectedUserError
+from sentinelscan.ignore import filter_ignored_files, load_ignore_patterns
+from sentinelscan.inline_ignore import finding_has_inline_ignore
 
 
 def check_path(input_path):

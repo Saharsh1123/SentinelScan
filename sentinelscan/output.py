@@ -9,7 +9,7 @@ Skipped-file diagnostics are currently rendered only in text mode.
 
 import json
 
-from sarif import output_sarif
+from sentinelscan.sarif import output_sarif
 
 
 def redact_value(value):

@@ -2,7 +2,7 @@
 
 import pytest
 
-from output import redact_value
+from sentinelscan.output import redact_value
 
 
 @pytest.mark.parametrize(

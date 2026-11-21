@@ -14,8 +14,12 @@ Config lookup order:
 import json
 from pathlib import Path
 
-from config.config_model import ScannerConfig, VALID_LEVELS, VALID_OUTPUT_FORMATS
-from exceptions import ExpectedUserError
+from sentinelscan.config.config_model import (
+    ScannerConfig,
+    VALID_LEVELS,
+    VALID_OUTPUT_FORMATS,
+)
+from sentinelscan.exceptions import ExpectedUserError
 
 CONFIG_FILE_NAME = "sentinelscan.json"
 

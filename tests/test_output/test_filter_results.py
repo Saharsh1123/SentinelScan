@@ -1,7 +1,7 @@
 """Unit tests for finding filtering behavior."""
 
-from detectors.models import Finding
-from output import filter_results
+from sentinelscan.detectors.models import Finding
+from sentinelscan.output import filter_results
 
 
 def make_finding(rule_id, severity, confidence):

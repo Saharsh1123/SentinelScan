@@ -1,4 +1,4 @@
-from exit_codes import ExitCode
+from sentinelscan.exit_codes import ExitCode
 from tests.helpers import (
     PASSWORD_REASON,
     assert_pure_json_output,

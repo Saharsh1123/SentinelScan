@@ -1,6 +1,6 @@
 import pytest
 
-from detectors.confidence import calculate_entropy, calculate_confidence
+from sentinelscan.detectors.confidence import calculate_entropy, calculate_confidence
 
 # -------------------------
 # Entropy calculation tests

@@ -4,8 +4,8 @@ import json
 
 import pytest
 
-from detectors.models import Finding
-from sarif import build_rule_definition, build_sarif_result, output_sarif
+from sentinelscan.detectors.models import Finding
+from sentinelscan.sarif import build_rule_definition, build_sarif_result, output_sarif
 
 SARIF_SCHEMA = "https://json.schemastore.org/sarif-2.1.0.json"
 PASSWORD_REASON = (

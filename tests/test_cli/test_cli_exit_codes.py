@@ -1,7 +1,7 @@
 """CLI exit-code contract tests."""
 
-import main as main_module
-from exit_codes import ExitCode
+import sentinelscan.main as main_module
+from sentinelscan.exit_codes import ExitCode
 from tests.helpers import parse_json_output, run_cli, write_python_file
 
 

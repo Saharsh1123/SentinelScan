@@ -1,4 +1,4 @@
-from ignore import (
+from sentinelscan.ignore import (
     filter_ignored_files,
     find_ignore_file,
     load_ignore_patterns,

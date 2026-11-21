@@ -2,9 +2,9 @@ import json
 
 import pytest
 
-from config.config import get_config
-from config.config_model import ScannerConfig
-from exceptions import ExpectedUserError
+from sentinelscan.config.config import get_config
+from sentinelscan.config.config_model import ScannerConfig
+from sentinelscan.exceptions import ExpectedUserError
 
 
 def write_config(tmp_path, data):

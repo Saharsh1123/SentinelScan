@@ -8,9 +8,9 @@ and returns structured findings.
 
 import re
 
-from detectors.confidence import calculate_confidence, calculate_entropy
-from detectors.models import Finding
-from detectors.rules import RULES
+from sentinelscan.detectors.confidence import calculate_confidence, calculate_entropy
+from sentinelscan.detectors.models import Finding
+from sentinelscan.detectors.rules import RULES
 
 DIRECT_NEGATION_TOKENS = {
     "no",
